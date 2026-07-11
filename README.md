@@ -1,5 +1,19 @@
 # contest2026_120_haohaoxuexitiantianxiangshang
 
+## AI 智能学习与调试显示终端
+
+本项目面向 2026 openvela AI 硬件开发者大赛，基于 openvela、LVGL 和
+`ai_agent` 实现一个可真实运行的学习与调试终端。当前 QEMU Demo 包含首页、
+系统状态、学习任务、AI 助手和设置五个页面，并已验证 MiMo 对话、工具调用、
+任务记录、主动提醒、实时系统状态和完整中文显示。
+
+主要代码位于 `app/hello_app/`，运行说明见
+`app/hello_app/README.md`，设计依据见 `DESIGN.md`，真实运行截图位于
+`assets/screenshots/`。作品代码只保存在本专属仓，不修改公共 `nuttx/`、
+`packages/` 或 `vendor/` 仓库。
+
+---
+
 👋 欢迎参加 **2026 首届 openvela AI 硬件开发者大赛**！
 
 这是组委会为你的队伍创建的**专属参赛仓库**（本仓为样例/模板，队伍编号 `120`；你看到的将是你自己的 `contest2026_<编号>_<队伍名>`）。比赛期间，你的全部参赛代码、打包产物与 AI Coding 日志都提交到这里。

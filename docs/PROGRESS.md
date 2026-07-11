@@ -30,11 +30,34 @@ AI study and debugging display terminal based on openvela and ai_agent.
 - A 30-second one-shot rest reminder was created with `cron_add`, fired, sent
   an active notification, and deleted itself.
 - Sanitized runtime evidence saved under `demo/runtime-logs/`.
+- Five-page LVGL study terminal implemented with Home, System Status, Study
+  Tasks, AI Assistant, and Settings views.
+- Light blue-white visual system and bottom navigation verified at 1280x800 in
+  QEMU.
+- Live heap, network, uptime, task counts, focus timer, and AI status preserved
+  in the redesigned interface.
+- NotoSansSC FreeType rendering verified with complete Simplified Chinese text;
+  font license files are stored under `assets/fonts/`.
+- Full single-thread CMake build completed successfully and generated
+  `vela_ap.elf` after installing the required `mtools` package.
+- Five real framebuffer screenshots saved under `assets/screenshots/`.
 
 ## Current Work
 
-- Design and implement the minimum LVGL study-terminal interface.
-- Keep the QEMU path reproducible while waiting for the official board BSP.
+- Keep the QEMU demo reproducible while waiting for the official board BSP.
+- Connect the verified ai_agent conversation stream to the AI screen.
+
+## Submission Work Still Required
+
+- Export the official AI Coding conversation logs with
+  `contest-log-collector` into `logs/318973613/`.
+- Verify the exported `manifest.json` and Codex JSONL files.
+- Scan every exported log for API keys, authorization headers, passwords, and
+  other sensitive values before committing it.
+
+The sanitized files under `demo/runtime-logs/` are runtime verification
+evidence. They do not replace the competition-required AI Coding logs under
+`logs/`.
 
 ## Evidence
 
@@ -52,7 +75,7 @@ is available and identified from upstream documentation or source.
 
 ## Next Verification
 
-1. Build the minimum LVGL interface in the contest repository.
-2. Run it in the supported QEMU configuration.
-3. Verify the home, system status, task, and AI views without changing public
-   `nuttx`, `packages`, or `vendor` repositories.
+1. Export and sanitize the official AI Coding logs.
+2. Connect live AI conversation text to the verified AI page.
+3. Revalidate the responsive layout when the official board resolution and BSP
+   become available.
