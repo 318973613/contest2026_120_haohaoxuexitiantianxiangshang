@@ -1,0 +1,3 @@
+ifneq ($(CONFIG_LVX_USE_DEMO_MINUI),)
+CONFIGURED_APPS += $(APPDIR)/packages/demos/minui
+endif

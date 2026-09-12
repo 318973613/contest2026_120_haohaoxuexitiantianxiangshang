@@ -1,0 +1,611 @@
+/****************************************************************************
+ * Study Terminal V2 - 完整 UI 实现
+ * 参考 Windows 版本设计，自己编写代码
+ * 基于 study_terminal_v2 稳定初始化
+ ****************************************************************************/
+
+#include <nuttx/config.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <time.h>
+#include <sys/time.h>
+#include <lvgl/lvgl.h>
+#include <lvgl/src/drivers/nuttx/lv_nuttx_entry.h>
+
+#ifdef CONFIG_BOARDCTL
+#include <sys/boardctl.h>
+#endif
+
+/* 颜色定义 - 参考 Windows 版本 */
+/* Replace LV_SYMBOL_* with ASCII to avoid G2D FontAwesome crash */
+#define UI_ICON_HOME      "H"
+#define UI_ICON_BARS      "="
+#define UI_ICON_LIST      "L"
+#define UI_ICON_AUDIO     "A"
+#define UI_ICON_SETTINGS  "S"
+
+#define COLOR_BG          0xdceff3
+#define COLOR_SURFACE     0xffffff
+#define COLOR_SURFACE_ALT 0xe7f1f4
+#define COLOR_TEXT        0x14212b
+#define COLOR_MUTED       0x61727d
+#define COLOR_TEAL        0x0f9f8f
+#define COLOR_BLUE        0x246bfd
+#define COLOR_PURPLE      0x7158d9
+#define COLOR_AMBER       0xeaa126
+#define COLOR_GREEN       0x209765
+#define COLOR_WHITE       0xffffff
+
+/* UI 状态结构 - 参考 Windows 版本简化 */
+struct study_ui_s
+{
+  lv_obj_t *screen;
+  lv_obj_t *tabview;
+  lv_obj_t *header_clock;
+  lv_obj_t *home_cpu;
+  lv_obj_t *home_memory;
+  lv_obj_t *status_cpu;
+  lv_obj_t *status_memory;
+  lv_obj_t *focus_time;
+  lv_obj_t *focus_bar;
+  bool focus_running;
+  uint32_t focus_elapsed;
+};
+
+static struct study_ui_s g_ui;
+
+/* OPAQUE_PATCH_APPLIED */
+
+#ifdef CONFIG_FT5X06_SWAPXY
+static lv_indev_read_cb_t g_touch_read_cb;
+#endif
+
+/****************************************************************************
+ * 辅助函数
+ ****************************************************************************/
+
+static lv_color_t color(uint32_t hex_value)
+{
+  return lv_color_hex(hex_value);
+}
+
+/* 触摸镜像修正 - 参考 Windows 版本 */
+#ifdef CONFIG_FT5X06_SWAPXY
+static void read_touch_aligned_landscape(lv_indev_t *indev,
+                                         lv_indev_data_t *data)
+{
+  lv_display_t *display;
+  int32_t horizontal;
+
+  g_touch_read_cb(indev, data);
+  display = lv_indev_get_display(indev);
+  horizontal = lv_display_get_horizontal_resolution(display);
+
+  if (horizontal > 0)
+    {
+      data->point.x = horizontal - 1 - data->point.x;
+    }
+}
+#endif
+
+/* 辅助函数：创建容器组 */
+static lv_obj_t *create_group(lv_obj_t *parent, lv_flex_flow_t flow)
+{
+  lv_obj_t *group = lv_obj_create(parent);
+
+  lv_obj_remove_flag(group, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_opa(group, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_border_width(group, 0, 0);
+  lv_obj_set_style_radius(group, 0, 0);
+  lv_obj_set_style_pad_all(group, 0, 0);
+  lv_obj_set_layout(group, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(group, flow);
+
+  return group;
+}
+
+/* 辅助函数：创建标签 */
+static lv_obj_t *create_label(lv_obj_t *parent, const char *text,
+                              uint32_t text_color)
+{
+  lv_obj_t *label = lv_label_create(parent);
+
+  lv_label_set_text(label, text);
+  lv_obj_set_style_text_color(label, color(text_color), 0);
+
+  return label;
+}
+
+/* 辅助函数：创建面板卡片 - 参考 Windows 版本样式 */
+static lv_obj_t *create_panel(lv_obj_t *parent, int32_t height)
+{
+  lv_obj_t *panel = lv_obj_create(parent);
+
+  lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_width(panel, LV_PCT(100));
+  lv_obj_set_height(panel, height);
+  lv_obj_set_style_bg_color(panel, color(COLOR_SURFACE), 0);
+  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_color(panel, color(COLOR_WHITE), 0);
+  lv_obj_set_style_border_width(panel, 1, 0);
+  lv_obj_set_style_radius(panel, 8, 0);
+  lv_obj_set_style_pad_all(panel, 16, 0);
+  lv_obj_set_style_shadow_color(panel, color(0x9fb4de), 0);
+  lv_obj_set_style_shadow_opa(panel, LV_OPA_TRANSP, 0);
+  lv_obj_set_style_shadow_width(panel, 12, 0);
+  lv_obj_set_style_shadow_ofs_y(panel, 4, 0);
+
+  return panel;
+}
+
+/****************************************************************************
+ * 页面创建函数 - 参考 Windows 版本设计
+ ****************************************************************************/
+
+/* 创建顶部时间栏 - 参考 Windows 版本 */
+static void create_header(lv_obj_t *parent)
+{
+  lv_obj_t *header;
+  lv_obj_t *clock;
+  lv_obj_t *title;
+  time_t now;
+  struct tm *timeinfo;
+  char time_str[32];
+
+  header = create_group(parent, LV_FLEX_FLOW_ROW);
+  lv_obj_set_width(header, LV_PCT(100));
+  lv_obj_set_height(header, 36);
+  lv_obj_set_style_bg_color(header, color(0x0a1b2f), 0);
+  lv_obj_set_style_bg_opa(header, LV_OPA_COVER, 0);
+  lv_obj_set_style_pad_left(header, 16, 0);
+  lv_obj_set_style_pad_right(header, 16, 0);
+  lv_obj_set_flex_align(header, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  /* 左侧：应用名称 */
+  title = create_label(header, "AI Study Terminal", COLOR_WHITE);
+
+  /* 右侧：时间 */
+  now = time(NULL);
+  timeinfo = localtime(&now);
+  snprintf(time_str, sizeof(time_str), "%02d:%02d",
+           timeinfo->tm_hour, timeinfo->tm_min);
+
+  clock = create_label(header, time_str, COLOR_WHITE);
+  g_ui.header_clock = clock;
+}
+
+/* 创建主页 - 参考 Windows 版本布局 */
+static void create_home_page(lv_obj_t *page)
+{
+  lv_obj_t *panel;
+  lv_obj_t *row;
+  lv_obj_t *label;
+
+  lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+  lv_obj_set_layout(page, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(page, 16, 0);
+  lv_obj_set_style_pad_row(page, 12, 0);
+
+  /* 欢迎卡片 */
+  panel = create_panel(page, 100);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(panel, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  label = create_label(panel, UI_ICON_HOME " Welcome", COLOR_BLUE);
+
+  label = create_label(panel, "AI Study Terminal Ready", COLOR_TEXT);
+
+  /* 系统信息卡片 */
+  panel = create_panel(page, 120);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  create_label(panel, "System Status", COLOR_TEXT);
+
+  row = create_group(panel, LV_FLEX_FLOW_ROW);
+  lv_obj_set_width(row, LV_PCT(100));
+  lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  create_label(row, "CPU:", COLOR_MUTED);
+  label = create_label(row, "0%", COLOR_TEAL);
+  g_ui.home_cpu = label;
+
+  row = create_group(panel, LV_FLEX_FLOW_ROW);
+  lv_obj_set_width(row, LV_PCT(100));
+  lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  create_label(row, "Memory:", COLOR_MUTED);
+  label = create_label(row, "0 MB", COLOR_BLUE);
+  g_ui.home_memory = label;
+}
+
+/* 创建状态页 - 参考 Windows 版本 */
+static void create_status_page(lv_obj_t *page)
+{
+  lv_obj_t *panel;
+  lv_obj_t *label;
+
+  lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+  lv_obj_set_layout(page, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(page, 16, 0);
+  lv_obj_set_style_pad_row(page, 12, 0);
+
+  /* CPU 卡片 */
+  panel = create_panel(page, 80);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 4, 0);
+
+  create_label(panel, "CPU Usage", COLOR_MUTED);
+  label = create_label(panel, "0 %", COLOR_TEAL);
+  g_ui.status_cpu = label;
+
+  /* 内存卡片 */
+  panel = create_panel(page, 80);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 4, 0);
+
+  create_label(panel, "Memory", COLOR_MUTED);
+  label = create_label(panel, "0 MB", COLOR_BLUE);
+  g_ui.status_memory = label;
+
+  /* 网络卡片 */
+  panel = create_panel(page, 80);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 4, 0);
+
+  create_label(panel, "Network", COLOR_MUTED);
+  create_label(panel, "Connected", COLOR_GREEN);
+}
+
+/* 创建任务页 - 参考 Windows 版本 */
+static void create_tasks_page(lv_obj_t *page)
+{
+  lv_obj_t *panel;
+  lv_obj_t *label;
+
+  lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+  lv_obj_set_layout(page, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(page, 16, 0);
+  lv_obj_set_style_pad_row(page, 12, 0);
+
+  /* 任务统计卡片 */
+  panel = create_panel(page, 100);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  label = create_label(panel, "Learning Tasks", COLOR_TEXT);
+
+  create_label(panel, "Pending: 0", COLOR_AMBER);
+  create_label(panel, "Completed: 0", COLOR_GREEN);
+
+  /* 任务列表卡片 */
+  panel = create_panel(page, 140);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  create_label(panel, UI_ICON_LIST " Task List", COLOR_TEXT);
+  create_label(panel, "No tasks yet", COLOR_MUTED);
+  create_label(panel, "Add tasks to get started", COLOR_MUTED);
+}
+
+/* 创建 AI 页 - 参考 Windows 版本 */
+static void create_ai_page(lv_obj_t *page)
+{
+  lv_obj_t *panel;
+  lv_obj_t *label;
+
+  lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+  lv_obj_set_layout(page, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(page, 16, 0);
+  lv_obj_set_style_pad_row(page, 12, 0);
+
+  /* AI 助手卡片 */
+  panel = create_panel(page, 160);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(panel, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(panel, 12, 0);
+
+  label = create_label(panel, UI_ICON_AUDIO, COLOR_PURPLE);
+
+  create_label(panel, "Voice Assistant", COLOR_TEXT);
+  create_label(panel, "Tap mic icon to start", COLOR_MUTED);
+
+  /* 专注模式卡片 */
+  panel = create_panel(page, 100);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(panel, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  create_label(panel, "Focus Mode", COLOR_TEXT);
+  label = create_label(panel, "25:00", COLOR_BLUE);
+  g_ui.focus_time = label;
+}
+
+/* 创建设置页 - 参考 Windows 版本 */
+static void create_settings_page(lv_obj_t *page)
+{
+  lv_obj_t *panel;
+  lv_obj_t *label;
+
+  lv_obj_set_style_bg_opa(page, LV_OPA_TRANSP, 0);
+  lv_obj_set_layout(page, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(page, 16, 0);
+  lv_obj_set_style_pad_row(page, 12, 0);
+
+  /* 系统信息卡片 */
+  panel = create_panel(page, 140);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  label = create_label(panel, "System Info", COLOR_TEXT);
+
+  create_label(panel, "Device: R528", COLOR_MUTED);
+  create_label(panel, "System: OpenVela", COLOR_MUTED);
+  create_label(panel, "Version: Contest 2026", COLOR_MUTED);
+
+  /* 关于卡片 */
+  panel = create_panel(page, 100);
+  lv_obj_set_layout(panel, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(panel, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(panel, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(panel, 8, 0);
+
+  create_label(panel, UI_ICON_SETTINGS " Settings", COLOR_TEXT);
+  create_label(panel, "Team 120", COLOR_MUTED);
+}
+
+/****************************************************************************
+ * 定时更新函数
+ ****************************************************************************/
+
+static void update_timer_cb(lv_timer_t *timer)
+{
+  time_t now;
+  struct tm *timeinfo;
+  char time_str[32];
+
+  (void)timer;
+
+  /* 更新时间显示 */
+  if (g_ui.header_clock != NULL)
+    {
+      now = time(NULL);
+      timeinfo = localtime(&now);
+      snprintf(time_str, sizeof(time_str), "%02d:%02d",
+               timeinfo->tm_hour, timeinfo->tm_min);
+      lv_label_set_text(g_ui.header_clock, time_str);
+    }
+
+  /* 更新专注计时器 */
+  if (g_ui.focus_running && g_ui.focus_time != NULL)
+    {
+      g_ui.focus_elapsed++;
+      uint32_t remaining = (25 * 60) - g_ui.focus_elapsed;
+      snprintf(time_str, sizeof(time_str), "%02lu:%02lu",
+               (unsigned long)(remaining / 60),
+               (unsigned long)(remaining % 60));
+      lv_label_set_text(g_ui.focus_time, time_str);
+
+      if (g_ui.focus_elapsed >= (25 * 60))
+        {
+          g_ui.focus_running = false;
+          lv_label_set_text(g_ui.focus_time, "25:00");
+        }
+    }
+}
+
+/****************************************************************************
+ * 主 UI 创建函数 - 参考 Windows 版本结构
+ ****************************************************************************/
+
+static void configure_display_orientation(lv_display_t *display)
+{
+  int32_t h = lv_display_get_horizontal_resolution(display);
+  int32_t v = lv_display_get_vertical_resolution(display);
+
+  if (h < v)
+    {
+      lv_display_set_rotation(display, LV_DISPLAY_ROTATION_90);
+      h = lv_display_get_horizontal_resolution(display);
+      v = lv_display_get_vertical_resolution(display);
+    }
+
+  printf("study_terminal_v2: display %ldx%ld landscape\n", (long)h, (long)v);
+}
+
+static void create_ui(void)
+{
+  lv_obj_t *tabview;
+  lv_obj_t *tabbar;
+  lv_obj_t *home;
+  lv_obj_t *status;
+  lv_obj_t *tasks;
+  lv_obj_t *ai;
+  lv_obj_t *settings;
+  uint32_t tab_index;
+
+  memset(&g_ui, 0, sizeof(g_ui));
+
+  /* 创建主屏幕 */
+  g_ui.screen = lv_obj_create(NULL);
+  lv_obj_remove_flag(g_ui.screen, LV_OBJ_FLAG_SCROLLABLE);
+  lv_obj_set_style_bg_color(g_ui.screen, color(COLOR_BG), 0);
+  lv_obj_set_style_bg_opa(g_ui.screen, LV_OPA_COVER, 0);
+  lv_obj_set_layout(g_ui.screen, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(g_ui.screen, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_all(g_ui.screen, 0, 0);
+  lv_obj_set_style_pad_row(g_ui.screen, 0, 0);
+
+  /* 创建顶部时间栏 */
+  create_header(g_ui.screen);
+
+  /* 创建 Tabview（底部导航栏）- 参考 Windows 版本 */
+  tabview = lv_tabview_create(g_ui.screen);
+  lv_obj_set_width(tabview, LV_PCT(100));
+  lv_obj_set_height(tabview, 1);
+  lv_obj_set_flex_grow(tabview, 1);
+  lv_tabview_set_tab_bar_position(tabview, LV_DIR_BOTTOM);
+  lv_tabview_set_tab_bar_size(tabview, 50);
+  lv_obj_set_style_bg_color(tabview, color(COLOR_BG), 0);
+  lv_obj_set_style_bg_opa(tabview, LV_OPA_COVER, 0);
+  lv_obj_set_style_border_width(tabview, 0, 0);
+
+  /* 配置底部导航栏样式 - 参考 Windows 版本 */
+  tabbar = lv_tabview_get_tab_bar(tabview);
+  lv_obj_set_width(tabbar, LV_PCT(100));
+  lv_obj_set_style_bg_color(tabbar, color(0x0a1b2f), 0);
+  lv_obj_set_style_bg_opa(tabbar, LV_OPA_COVER, 0);
+  lv_obj_set_style_text_color(tabbar, color(0x9eb0c2), 0);
+  lv_obj_set_style_text_color(tabbar, color(0x75a0ff),
+                              LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_color(tabbar, color(0x17314f),
+                            LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_bg_opa(tabbar, LV_OPA_COVER,
+                          LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_border_color(tabbar, color(0x75a0ff),
+                                LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_border_width(tabbar, 2,
+                                LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_border_side(tabbar, LV_BORDER_SIDE_TOP,
+                               LV_PART_ITEMS | LV_STATE_CHECKED);
+  lv_obj_set_style_radius(tabbar, 0, 0);
+  lv_obj_set_style_pad_left(tabbar, 0, 0);
+  lv_obj_set_style_pad_right(tabbar, 0, 0);
+  lv_obj_set_style_pad_column(tabbar, 0, 0);
+
+  /* 添加 5 个标签页 - 使用 LVGL 符号图标 */
+  home = lv_tabview_add_tab(tabview, "Home");
+  status = lv_tabview_add_tab(tabview, "Stat");
+  tasks = lv_tabview_add_tab(tabview, "Task");
+  ai = lv_tabview_add_tab(tabview, "AI");
+  settings = lv_tabview_add_tab(tabview, "Set");
+
+  /* 让每个标签按钮平均分配宽度 */
+  for (tab_index = 0; tab_index < lv_obj_get_child_count(tabbar); tab_index++)
+    {
+      lv_obj_set_flex_grow(lv_obj_get_child(tabbar, tab_index), 1);
+    }
+
+  /* 创建各页面内容 */
+  create_home_page(home);
+  create_status_page(status);
+  create_tasks_page(tasks);
+  create_ai_page(ai);
+  create_settings_page(settings);
+
+  /* 设置默认标签页 */
+  lv_tabview_set_active(tabview, 0, LV_ANIM_OFF);
+
+  /* 创建定时器 */
+  lv_timer_create(update_timer_cb, 1000, NULL);
+
+  g_ui.tabview = tabview;
+}
+
+/****************************************************************************
+ * 主函数 - 保留 study_terminal_v2 稳定初始化流程
+ ****************************************************************************/
+
+int main(int argc, char *argv[])
+{
+  lv_nuttx_dsc_t info;
+  lv_nuttx_result_t result;
+
+  (void)argc;
+  (void)argv;
+
+  printf("study_terminal_v2: starting full UI\n");
+
+  /* 检查 LVGL 是否已初始化 */
+  if (lv_is_initialized())
+    {
+      fprintf(stderr, "study_terminal_v2: LVGL already initialized\n");
+      return 1;
+    }
+
+#ifdef CONFIG_BOARDCTL
+#ifndef CONFIG_NSH_ARCHINIT
+  boardctl(BOARDIOC_INIT, 0);
+#endif
+#endif
+
+  /* 第一步：初始化 LVGL */
+  lv_init();
+  printf("study_terminal_v2: lv_init() completed\n");
+
+  /* 第二步：初始化 NuttX 显示驱动 */
+  lv_nuttx_dsc_init(&info);
+  printf("study_terminal_v2: lv_nuttx_dsc_init() completed\n");
+
+  lv_nuttx_init(&info, &result);
+  printf("study_terminal_v2: lv_nuttx_init() completed\n");
+
+  if (result.disp == NULL)
+    {
+      fprintf(stderr, "study_terminal_v2: display init failed\n");
+      lv_deinit();
+      return 1;
+    }
+
+  printf("study_terminal_v2: display up\n");
+
+  /* Apply rotation for landscape panels */
+  configure_display_orientation(result.disp);
+
+#ifdef CONFIG_FT5X06_SWAPXY
+  /* 修复触摸镜像问题 */
+  if (result.indev != NULL)
+    {
+      g_touch_read_cb = lv_indev_get_read_cb(result.indev);
+      if (g_touch_read_cb != NULL)
+        {
+          lv_indev_set_read_cb(result.indev, read_touch_aligned_landscape);
+          printf("study_terminal_v2: touch remapping enabled\n");
+        }
+    }
+#endif
+
+  /* 第三步：创建完整 UI */
+  create_ui();
+  printf("study_terminal_v2: UI created (5 pages with tabview)\n");
+
+  /* 第四步：加载主屏幕 */
+  lv_screen_load(g_ui.screen);
+  printf("study_terminal_v2: screen loaded\n");
+
+  /* 主循环 - 保持与 v2 一致 */
+  printf("study_terminal_v2: entering main loop\n");
+  while (true)
+    {
+      uint32_t idle = lv_timer_handler();
+      usleep((idle == 0 ? 1 : idle) * 1000);
+    }
+
+  /* 清理资源 */
+  lv_nuttx_deinit(&result);
+  lv_deinit();
+
+  return 0;
+}

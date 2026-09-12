@@ -62,8 +62,12 @@ credentials, API keys, or tokens in the task file.
    and provide `at_epoch` as an integer.
 3. For a repeating reminder, call `cron_add` with `schedule_type` set to
    `every` and provide `interval_s` as an integer.
-4. Use channel `system` unless the incoming channel requires another value.
-5. Confirm the reminder using a human-readable time.
+4. If the request arrived through the `voice` channel, set `channel` to
+   `voice` and `chat_id` to `voice` so the board speaks the reminder aloud.
+   Use channel `system` for non-voice requests unless their channel requires
+   another value.
+5. Keep spoken reminder text short, direct, and free of Markdown.
+6. Confirm the reminder using a human-readable time.
 
 ## Examples
 

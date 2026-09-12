@@ -1,0 +1,96 @@
+/****************************************************************************
+ * study_terminal_v2 - clean native LVGL homepage baseline
+ *
+ * This intentionally starts from the verified minui display path. It does
+ * not create splash screens, timers, bridges, file I/O, fonts, or hidden
+ * pages. Add product features only after this surface is stable on hardware.
+ ****************************************************************************/
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <lvgl/lvgl.h>
+#include <lvgl/src/drivers/nuttx/lv_nuttx_entry.h>
+#ifdef CONFIG_BOARDCTL
+#  include <sys/boardctl.h>
+#endif
+
+static void label(lv_obj_t *parent, const char *text, int32_t size,
+                  lv_color_t color)
+{
+  lv_obj_t *obj = lv_label_create(parent);
+  lv_label_set_text(obj, text);
+  lv_obj_set_style_text_color(obj, color, LV_PART_MAIN);
+  if (size > 0) lv_obj_set_style_text_font(obj, &lv_font_montserrat_16, 0);
+  lv_obj_center(obj);
+}
+
+static lv_obj_t *panel(lv_obj_t *parent, int32_t w, int32_t h,
+                       lv_color_t color)
+{
+  lv_obj_t *obj = lv_obj_create(parent);
+  lv_obj_set_size(obj, w, h);
+  lv_obj_set_style_bg_color(obj, color, LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(obj, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(obj, 6, LV_PART_MAIN);
+  lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+  return obj;
+}
+
+static void build_home(void)
+{
+  lv_obj_t *screen = lv_screen_active();
+  lv_obj_t *hero;
+  lv_obj_t *left;
+  lv_obj_t *right;
+  lv_obj_t *status;
+  lv_obj_t *tasks;
+
+  lv_obj_set_style_bg_color(screen, lv_color_hex(0xf3f7fb), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
+
+  hero = panel(screen, 440, 82, lv_color_hex(0x246bfd));
+  lv_obj_align(hero, LV_ALIGN_TOP_MID, 0, 12);
+  label(hero, "STUDY TERMINAL", 1, lv_color_hex(0xffffff));
+
+  left = panel(screen, 210, 108, lv_color_hex(0xffffff));
+  lv_obj_align(left, LV_ALIGN_TOP_LEFT, 12, 108);
+  label(left, "TODAY'S FOCUS", 1, lv_color_hex(0x17314f));
+  right = panel(screen, 210, 108, lv_color_hex(0xffffff));
+  lv_obj_align(right, LV_ALIGN_TOP_RIGHT, -12, 108);
+  label(right, "25:00", 1, lv_color_hex(0x246bfd));
+
+  status = panel(screen, 440, 62, lv_color_hex(0xe5edf7));
+  lv_obj_align(status, LV_ALIGN_TOP_MID, 0, 228);
+  label(status, "CPU   MEMORY   NETWORK   UPTIME", 1,
+        lv_color_hex(0x31506d));
+
+  tasks = panel(screen, 440, 48, lv_color_hex(0xffffff));
+  lv_obj_align(tasks, LV_ALIGN_TOP_MID, 0, 302);
+  label(tasks, "LEARNING TASKS   0 PENDING", 1,
+        lv_color_hex(0x17314f));
+}
+
+int main(int argc, char *argv[])
+{
+  lv_nuttx_dsc_t info;
+  lv_nuttx_result_t result;
+  (void)argc; (void)argv;
+  if (lv_is_initialized()) return 1;
+#ifdef CONFIG_BOARDCTL
+# ifndef CONFIG_NSH_ARCHINIT
+  boardctl(BOARDIOC_INIT, 0);
+# endif
+#endif
+  lv_init();
+  lv_nuttx_dsc_init(&info);
+  lv_nuttx_init(&info, &result);
+  if (result.disp == NULL) { lv_deinit(); return 1; }
+  printf("study_terminal_v2: display up\n");
+  build_home();
+  printf("study_terminal_v2: homepage ready\n");
+  for (;;) {
+    uint32_t idle = lv_timer_handler();
+    usleep((idle == 0 ? 1 : idle) * 1000);
+  }
+}

@@ -112,5 +112,7 @@ demo/runtime-logs/ai-agent-runtime-2026-07-11.md
 - Model wording is nondeterministic. Judge success from the completed LLM
   trace, tool calls, persisted task data, and reminder firing rather than an
   exact response sentence.
-- Wait for the official DShanPixVela-Devkit V1 BSP. Do not substitute a
-  similarly named R528 configuration.
+- The physical target is the official
+  `vendor/allwinnertech/boards/r528/r528s3-dshanpi/` BSP. Its patch, build,
+  package, and hardware behavior remain separate from this verified QEMU
+  procedure; do not substitute another R528 configuration.

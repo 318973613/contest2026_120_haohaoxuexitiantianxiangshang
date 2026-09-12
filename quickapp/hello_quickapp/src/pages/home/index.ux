@@ -1,0 +1,1512 @@
+﻿<template>
+  <div class="app">
+    <div class="topbar">
+      <text class="screen-title" if="{{ currentPage === 'home' }}">AI 智能学习与调试终端</text>
+      <text class="screen-title" if="{{ currentPage === 'status' }}">系统状态</text>
+      <text class="screen-title" if="{{ currentPage === 'tasks' }}">学习任务</text>
+      <text class="screen-title" if="{{ currentPage === 'ai' }}">AI 助手</text>
+      <text class="screen-title" if="{{ currentPage === 'settings' }}">设置</text>
+      <div class="top-status">
+        <text class="top-chip">WiFi</text>
+        <text class="top-chip">{{ batteryDisplay }}</text>
+        <text class="clock">{{ nowText }}</text>
+        <text class="settings-entry" onclick="showSettings">设置</text>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="page home-page" if="{{ currentPage === 'home' }}">
+        <div class="home-upper">
+          <div class="glass-card today-card">
+            <text class="card-title">今日重点</text>
+            <div class="focus-task"><text class="task-icon blue-soft">声</text><div class="focus-task-copy"><text class="focus-task-title">{{ nextTaskText }}</text><div class="progress-track"><div class="progress-fill progress-blue"></div></div></div><text class="progress-text">60%</text></div>
+            <div class="focus-task"><text class="task-icon green-soft">学</text><div class="focus-task-copy"><text class="focus-task-title">{{ pendingCount }} 项任务待完成</text><div class="progress-track"><div class="progress-fill progress-green"></div></div></div><text class="progress-text">30%</text></div>
+          </div>
+          <div class="glass-card ai-reminder-card"><text class="card-title">AI 提醒</text><text class="ai-orb">AI</text><text class="reminder-copy">保持当前节奏，完成一项后记得短暂休息</text></div>
+        </div>
+        <div class="system-strip"><text class="system-ok">系统运行正常</text><text class="strip-value">网络  {{ networkType }}</text><text class="strip-dot">·</text><text class="strip-value">存储  {{ availableStorage }}</text><text class="strip-dot">·</text><text class="strip-value">运行  {{ sessionTime }}</text></div>
+        <div class="home-actions"><div class="action-card" onclick="showStatus"><text class="action-icon blue-action">调</text><text class="action-title">快速调试</text><text class="action-arrow">&gt;</text></div><div class="action-card" onclick="showTasks"><text class="action-icon purple-action">学</text><text class="action-title">学习资料</text><text class="action-arrow">&gt;</text></div></div>
+      </div>
+
+      <div class="page status-page" if="{{ currentPage === 'status' }}">
+        <div class="health-banner"><text class="shield-icon">稳</text><div class="health-copy"><text class="health-title">运行稳定</text><text class="health-sub">系统运行正常，所有服务状态良好</text></div><input id="status-refresh" type="button" class="refresh-btn" value="刷新" onclick="refreshStatus" /></div>
+        <div class="metric-grid"><div class="metric-card"><text class="metric-title blue-text">网络</text><text class="metric-main small-main">{{ networkType }}</text><text class="metric-sub">连接状态</text></div><div class="metric-card"><text class="metric-title purple-text">电量</text><text class="metric-main">{{ batteryDisplay }}</text><text class="metric-sub">{{ charging ? '正在充电' : '设备供电' }}</text></div><div class="metric-card"><text class="metric-title green-text">存储</text><text class="metric-main small-main">{{ availableStorage }}</text><text class="metric-sub">总计 {{ totalStorage }}</text></div><div class="metric-card"><text class="metric-title orange-text">会话</text><text class="metric-main small-main">{{ sessionTime }}</text><text class="metric-sub">运行时间</text></div></div>
+        <div class="status-bottom"><div class="network-card"><text class="card-title">设备信息</text><text class="detail-line">{{ deviceModel }}</text><text class="detail-line">{{ osVersion }}</text></div><div class="trend-card"><text class="card-title">性能趋势</text><text class="trend-wave">低    中    高</text><text class="trend-label">稳定运行 · {{ screenSize }}</text></div><div class="advice-card"><text class="card-title">AI 建议</text><text class="advice-copy">保持网络连接，定期整理任务记录</text><text class="detail-line">平台 {{ platformVersion }}</text></div></div>
+      </div>
+
+      <div class="page tasks-page" if="{{ currentPage === 'tasks' }}">
+        <div class="task-main-card"><text class="card-title">今日任务</text><list class="task-list"><list-item type="empty" class="empty-state" if="{{ taskCount === 0 }}"><text class="empty-title">还没有学习任务</text></list-item><list-item type="task" class="task-row" for="{{ tasks }}"><text class="task-icon {{ $item.done ? 'green-soft' : 'blue-soft' }}">{{ $item.done ? '完' : '学' }}</text><div class="task-copy"><text class="{{ $item.done ? 'task-text task-done' : 'task-text' }}">{{ $item.text }}</text><text class="task-state">{{ $item.done ? '已完成' : '待完成' }}</text></div></list-item></list></div>
+        <div class="task-side"><div class="progress-card"><text class="card-title">今日进度</text><text class="progress-ring">{{ doneCount }}/{{ taskCount }}</text><text class="progress-caption">已完成</text></div><div class="task-control-card"><text class="card-title">新建任务</text><div class="task-input-shell"><text class="task-input-shell-text">{{ taskInput ? taskInput : '输入学习任务' }}</text></div><input id="task-input" type="text" class="task-inline-input" maxlength="40" placeholder="输入学习任务" value="{{ taskInput }}" onchange="onTaskInput" /><input id="task-add" type="button" class="primary-pill" value="+ 添加任务" onclick="addTask" /><input id="task-complete" type="button" class="soft-pill" value="完成下一项" onclick="completeNextTask" /><input id="task-clean" type="button" class="soft-pill danger-text" value="移除已完成" onclick="removeCompletedTasks" /><text class="form-message">{{ taskMessage }}</text></div></div>
+      </div>
+
+      <div class="page ai-page" if="{{ currentPage === 'ai' }}">
+        <div class="ai-main"><div class="bubble-row"><text class="avatar ai-avatar">AI</text><text class="bubble ai-bubble">你好！我可以帮你学习、调试和优化系统，有什么需要？</text></div><div class="bubble-row user-row" if="{{ lastQuestion }}"><text class="bubble user-bubble">{{ lastQuestion }}</text><text class="avatar user-avatar">你</text></div><div class="bubble-row"><text class="avatar ai-avatar">AI</text><div class="answer-bubble"><list class="answer-list"><list-item type="answer" class="answer-row" for="{{ aiReplyLines }}"><text class="answer-text">{{ $item }}</text></list-item></list></div></div><div class="ai-quick-row"><input type="button" class="quick-tool" value="记录任务" onclick="showTasks" /><input id="ai-status-preset" type="button" class="quick-tool" value="查看状态" onclick="askStatusPreset" /><input type="button" class="quick-tool" value="开始专注" onclick="showHome" /></div></div>
+        <div class="tool-card"><text class="tool-icon">工</text><text class="tool-title">{{ aiBusy ? '工具调用中' : 'AI 已就绪' }}</text><text class="tool-sub">{{ voiceListening ? '正在听取语音' : '连接 ai_agent 服务' }}</text><div class="tool-progress"></div></div>
+        <div class="ai-reminder-strip"><text class="blue-text">提醒</text><text class="reminder-time">10:45</text><text class="reminder-task">{{ nextTaskText }}</text><input id="reminder-test" type="button" class="running-pill" value="10 秒测试" onclick="startReminderTest" /></div>
+        <div class="ai-input-shell"><text class="ai-input-shell-text">{{ aiQuery ? aiQuery : '输入问题或使用语音...' }}</text></div><input id="ai-input" type="text" class="ai-inline-input" maxlength="120" placeholder="输入问题或使用语音..." value="{{ aiQuery }}" onchange="onAiInput" />
+        <div class="voice-actions"><input id="voice-start" type="button" class="voice-pill" value="{{ voiceListening ? '正在听' : '开始说话' }}" onclick="startVoiceInput" /><input id="voice-stop" type="button" class="voice-pill stop-pill" value="停止并识别" onclick="stopVoiceInput" /><input id="ai-send" type="button" class="send-pill" value="{{ aiBusy ? '处理中' : '发送' }}" onclick="askAI" /></div><text class="ai-message">{{ aiMessage }}</text>
+      </div>
+
+      <div class="page settings-page" if="{{ currentPage === 'settings' }}">
+        <div class="settings-grid"><div class="setting-card"><text class="setting-icon purple-action">人</text><div class="setting-copy"><text class="setting-title">账号与设备</text><text class="setting-sub">openvela 学习终端</text></div></div><div class="setting-card"><text class="setting-icon purple-action">专</text><div class="setting-copy"><text class="setting-title">学习模式 / 专注模式</text><text class="setting-sub">25 分钟专注计时</text></div><switch id="focus-switch" checked="{{ focusModeEnabled }}" onchange="onFocusModeSetting"></switch></div><div class="setting-card"><text class="setting-icon blue-action">网</text><div class="setting-copy"><text class="setting-title">Wi-Fi 与网络</text><text class="setting-sub">已连接 · {{ networkType }}</text></div></div><div class="setting-card"><text class="setting-icon blue-action">AI</text><div class="setting-copy"><text class="setting-title">AI 服务配置</text><text class="setting-sub">模型与偏好设置</text></div></div><div class="setting-card"><text class="setting-icon purple-action">声</text><div class="setting-copy"><text class="setting-title">声音与提醒</text><text class="setting-sub">主动提醒与语音输入</text></div><switch id="reminder-switch" checked="{{ remindersEnabled }}" onchange="onReminderSetting"></switch></div><div class="setting-card"><text class="setting-icon green-soft">同</text><div class="setting-copy"><text class="setting-title">数据同步与日志</text><text class="setting-sub">自动刷新设备状态</text></div><switch id="refresh-switch" checked="{{ autoRefreshEnabled }}" onchange="onAutoRefreshSetting"></switch></div><div class="setting-card"><text class="setting-icon orange-soft">亮</text><div class="setting-copy"><text class="setting-title">屏幕亮度</text><text class="setting-sub">跟随设备设置</text></div></div><div class="setting-card"><text class="setting-icon gray-soft">i</text><div class="setting-copy"><text class="setting-title">关于设备</text><text class="setting-sub">Demo 1.0.0 · {{ deviceModel }}</text></div><input id="reset-demo" type="button" class="reset-mini" value="重置" onclick="resetDemoData" /></div></div><text class="settings-message">{{ settingsMessage }}</text>
+      </div>
+
+    </div>
+
+    <div class="notice" if="{{ reminderText }}" onclick="dismissNotice">
+      <text class="notice-title">提醒</text>
+      <text class="notice-text">{{ reminderText }}</text>
+      <text class="notice-close">关闭</text>
+    </div>
+
+    <div class="bottom-nav" if="{{ currentPage !== 'settings' }}">
+      <div id="nav-home" class="{{ currentPage === 'home' ? 'nav-item nav-active' : 'nav-item' }}" onclick="showHome">
+        <text class="nav-symbol">首</text><text class="nav-label">首页</text>
+      </div>
+      <div id="nav-status" class="{{ currentPage === 'status' ? 'nav-item nav-active' : 'nav-item' }}" onclick="showStatus">
+        <text class="nav-symbol">状</text><text class="nav-label">状态</text>
+      </div>
+      <div id="nav-tasks" class="{{ currentPage === 'tasks' ? 'nav-item nav-active' : 'nav-item' }}" onclick="showTasks">
+        <text class="nav-symbol">任</text><text class="nav-label">任务</text>
+      </div>
+      <div id="nav-ai" class="{{ currentPage === 'ai' ? 'nav-item nav-active' : 'nav-item' }}" onclick="showAi">
+        <text class="nav-symbol">AI</text><text class="nav-label">助手</text>
+      </div>
+    </div>
+    <div class="bottom-nav settings-nav" if="{{ currentPage === 'settings' }}"><div class="settings-item" onclick="showHome"><text class="nav-symbol">首</text><text class="nav-label">首页</text></div><div class="settings-item" onclick="showStatus"><text class="nav-symbol">状</text><text class="nav-label">状态</text></div><div class="settings-item" onclick="showTasks"><text class="nav-symbol">任</text><text class="nav-label">任务</text></div><div class="settings-item" onclick="showAi"><text class="nav-symbol">AI</text><text class="nav-label">助手</text></div><div class="settings-item nav-active"><text class="nav-symbol">设</text><text class="nav-label">设置</text></div></div>
+
+  </div>
+</template>
+<script>
+import storage from '@system.storage'
+import network from '@system.network'
+import battery from '@system.battery'
+import device from '@system.device'
+import velaclaw from '@system.velaclaw'
+
+const TASKS_KEY = 'study_terminal_tasks_v1'
+const SETTINGS_KEY = 'study_terminal_settings_v1'
+
+export default {
+  private: {
+    currentPage: 'home',
+    nowText: '--:--',
+    dateText: '',
+    sessionTime: '00:00',
+    startedAt: 0,
+    clockTimer: null,
+    focusSeconds: 1500,
+    focusTime: '25:00',
+    focusRunning: false,
+    focusTimer: null,
+    reminderTimer: null,
+    reminderText: '',
+
+    tasks: [
+      { id: 1, text: '复习 openvela Quick App 基础', done: false },
+      { id: 2, text: '验证 AI 助手工具调用', done: false },
+      { id: 3, text: '整理今日演示记录', done: true }
+    ],
+    taskInput: '',
+    taskMessage: '',
+    taskCount: 3,
+    doneCount: 1,
+    pendingCount: 2,
+    nextTaskText: '复习 openvela Quick App 基础',
+
+    networkType: '检测中',
+    networkOnline: false,
+    batteryLevel: '--',
+    batteryDisplay: '不可用',
+    charging: false,
+    availableStorage: '--',
+    totalStorage: '--',
+    deviceModel: 'openvela 设备',
+    osVersion: '--',
+    screenSize: '--',
+    platformVersion: '--',
+    statusUpdated: '--:--',
+    autoRefreshTimer: null,
+
+    aiQuery: '',
+    lastQuestion: '',
+    aiReply: '你好，我可以帮助你安排学习任务、分析设备状态，也可以回答学习问题。',
+    aiReplyLines: ['你好，我可以帮助你安排学习任务、分析设备状态，也可以回答学习问题。'],
+    aiBusy: false,
+    aiMessage: '',
+    voiceListening: false,
+
+    remindersEnabled: true,
+    autoRefreshEnabled: true,
+    focusModeEnabled: true,
+    settingsMessage: ''
+  },
+
+  onInit() {
+    this.startedAt = Date.now()
+    this.updateClock()
+    this.syncTaskSummary()
+    this.loadTasks()
+    this.loadSettings()
+    this.refreshStatus()
+    this.clockTimer = setInterval(() => {
+      this.updateClock()
+    }, 1000)
+    if (network && typeof network.subscribe === 'function') {
+      network.subscribe({
+        callback: (data) => {
+          this.applyNetworkType(data.type)
+        }
+      })
+    }
+  },
+
+  onDestroy() {
+    this.stopFocusTimer()
+    this.stopAutoRefresh()
+    if (this.clockTimer) {
+      clearInterval(this.clockTimer)
+      this.clockTimer = null
+    }
+    if (this.reminderTimer) {
+      clearTimeout(this.reminderTimer)
+      this.reminderTimer = null
+    }
+    if (network && typeof network.unsubscribe === 'function') {
+      network.unsubscribe()
+    }
+  },
+
+  showHome() {
+    this.currentPage = 'home'
+  },
+
+  showStatus() {
+    this.currentPage = 'status'
+    this.refreshStatus()
+  },
+
+  showTasks() {
+    this.currentPage = 'tasks'
+  },
+
+  showAi() {
+    this.currentPage = 'ai'
+  },
+
+  showSettings() {
+    this.currentPage = 'settings'
+  },
+
+  pad2(value) {
+    return value < 10 ? '0' + value : '' + value
+  },
+
+  updateClock() {
+    const now = new Date()
+    this.nowText = this.pad2(now.getHours()) + ':' + this.pad2(now.getMinutes())
+    this.dateText = (now.getMonth() + 1) + ' 月 ' + now.getDate() + ' 日'
+    const elapsed = Math.max(0, Math.floor((Date.now() - this.startedAt) / 1000))
+    const hours = Math.floor(elapsed / 3600)
+    const minutes = Math.floor((elapsed % 3600) / 60)
+    const seconds = elapsed % 60
+    this.sessionTime = hours > 0
+      ? this.pad2(hours) + ':' + this.pad2(minutes) + ':' + this.pad2(seconds)
+      : this.pad2(minutes) + ':' + this.pad2(seconds)
+  },
+
+  formatDuration(seconds) {
+    const minutes = Math.floor(seconds / 60)
+    const rest = seconds % 60
+    return this.pad2(minutes) + ':' + this.pad2(rest)
+  },
+
+  toggleFocus() {
+    if (!this.focusModeEnabled) {
+      this.reminderText = '请先在设置中开启专注模式'
+      return
+    }
+    if (this.focusRunning) {
+      this.stopFocusTimer()
+      return
+    }
+    this.focusRunning = true
+    this.focusTimer = setInterval(() => {
+      if (this.focusSeconds > 0) {
+        this.focusSeconds -= 1
+        this.focusTime = this.formatDuration(this.focusSeconds)
+      }
+      if (this.focusSeconds <= 0) {
+        this.stopFocusTimer()
+        if (this.remindersEnabled) {
+          this.reminderText = '本轮专注已完成，现在休息一下吧'
+        }
+      }
+    }, 1000)
+  },
+
+  stopFocusTimer() {
+    if (this.focusTimer) {
+      clearInterval(this.focusTimer)
+      this.focusTimer = null
+    }
+    this.focusRunning = false
+  },
+
+  resetFocus() {
+    this.stopFocusTimer()
+    this.focusSeconds = 1500
+    this.focusTime = '25:00'
+  },
+
+  startReminderTest() {
+    if (!this.remindersEnabled) {
+      this.reminderText = '主动提醒已关闭，可在设置中重新开启'
+      return
+    }
+    if (this.reminderTimer) {
+      clearTimeout(this.reminderTimer)
+    }
+    this.reminderText = '测试提醒已设置，10 秒后提示休息'
+    this.reminderTimer = setTimeout(() => {
+      this.reminderTimer = null
+      this.reminderText = '学习了一会儿，现在休息 1 分钟吧'
+    }, 10000)
+  },
+
+  dismissNotice() {
+    this.reminderText = ''
+  },
+
+  onTaskInput(event) {
+    this.taskInput = event.value || ''
+  },
+
+  addTask() {
+    const text = (this.taskInput || '').trim()
+    if (!text) {
+      this.taskMessage = '请先输入任务内容'
+      return
+    }
+    const task = {
+      id: Date.now(),
+      text: text,
+      done: false
+    }
+    this.tasks = this.tasks.concat([task])
+    this.taskInput = ''
+    this.taskMessage = '任务已添加并保存'
+    this.syncTaskSummary()
+    this.saveTasks()
+  },
+
+  completeNextTask() {
+    let changed = false
+    const nextTasks = []
+    for (let i = 0; i < this.tasks.length; i += 1) {
+      const source = this.tasks[i]
+      const task = { id: source.id, text: source.text, done: source.done }
+      if (!changed && !task.done) {
+        task.done = true
+        changed = true
+      }
+      nextTasks.push(task)
+    }
+    if (!changed) {
+      this.taskMessage = '没有待完成任务'
+      return
+    }
+    this.tasks = nextTasks
+    this.taskMessage = '已完成下一项任务'
+    this.syncTaskSummary()
+    this.saveTasks()
+  },
+
+  removeCompletedTasks() {
+    const pending = []
+    for (let i = 0; i < this.tasks.length; i += 1) {
+      if (!this.tasks[i].done) {
+        pending.push(this.tasks[i])
+      }
+    }
+    const removed = this.tasks.length - pending.length
+    this.tasks = pending
+    this.taskMessage = removed > 0 ? '已移除 ' + removed + ' 项已完成任务' : '没有可移除的任务'
+    this.syncTaskSummary()
+    this.saveTasks()
+  },
+
+  syncTaskSummary() {
+    let done = 0
+    let next = '今天的任务已全部完成'
+    for (let i = 0; i < this.tasks.length; i += 1) {
+      if (this.tasks[i].done) {
+        done += 1
+      } else if (next === '今天的任务已全部完成') {
+        next = this.tasks[i].text
+      }
+    }
+    this.taskCount = this.tasks.length
+    this.doneCount = done
+    this.pendingCount = this.tasks.length - done
+    this.nextTaskText = this.tasks.length === 0 ? '还没有任务' : next
+  },
+
+  saveTasks() {
+    storage.set({
+      key: TASKS_KEY,
+      value: JSON.stringify(this.tasks),
+      fail: (data, code) => {
+        this.taskMessage = '任务保存失败：' + code
+      },
+      complete: () => {}
+    })
+  },
+
+  loadTasks() {
+    storage.get({
+      key: TASKS_KEY,
+      success: (data) => {
+        if (!data) {
+          return
+        }
+        try {
+          const saved = JSON.parse(data)
+          if (saved && saved.length !== undefined) {
+            this.tasks = saved
+            this.syncTaskSummary()
+          }
+        } catch (error) {
+          console.log('[study-terminal] invalid saved tasks')
+        }
+      },
+      fail: () => {},
+      complete: () => {}
+    })
+  },
+
+  applyNetworkType(type) {
+    const value = type || 'none'
+    this.networkOnline = value !== 'none' && value !== 'unknown'
+    if (!this.networkOnline) {
+      this.networkType = '未连接'
+    } else if (value === 'others' || value === 'ethernet') {
+      this.networkType = '以太网'
+    } else if (value === 'wifi') {
+      this.networkType = 'WiFi'
+    } else {
+      this.networkType = value.toUpperCase()
+    }
+  },
+
+  refreshStatus() {
+    const now = new Date()
+    this.statusUpdated = this.pad2(now.getHours()) + ':' + this.pad2(now.getMinutes()) + ':' + this.pad2(now.getSeconds())
+    if (network && typeof network.getType === 'function') {
+      network.getType({
+        success: (data) => {
+          this.applyNetworkType(data.type)
+        },
+        fail: (data, code) => {
+          this.networkType = '不可用 (' + code + ')'
+          this.networkOnline = false
+        },
+        complete: () => {}
+      })
+    } else {
+      this.networkType = '不可用'
+      this.networkOnline = false
+    }
+
+    if (battery && typeof battery.getStatus === 'function') {
+      battery.getStatus({
+        success: (data) => {
+          this.batteryLevel = data.level
+          this.batteryDisplay = data.level + '%'
+          this.charging = data.charging
+        },
+        fail: (data, code) => {
+          this.batteryLevel = '--'
+          this.batteryDisplay = '不可用'
+          console.log('[study-terminal] battery error ' + code)
+        },
+        complete: () => {}
+      })
+    } else {
+      this.batteryLevel = '--'
+      this.batteryDisplay = '不可用'
+      this.charging = false
+    }
+
+    if (device && typeof device.getInfo === 'function') {
+      device.getInfo({
+        success: (data) => {
+          this.deviceModel = data.model || data.product || 'openvela 设备'
+          this.osVersion = (data.osType || 'openvela') + ' ' + (data.osVersionName || '')
+          this.screenSize = data.screenWidth + ' × ' + data.screenHeight
+          this.platformVersion = data.platformVersionName || '--'
+        },
+        fail: (data, code) => {
+          this.deviceModel = '读取失败 (' + code + ')'
+        },
+        complete: () => {}
+      })
+    } else {
+      this.deviceModel = '当前环境不可用'
+      this.osVersion = '--'
+      this.screenSize = '--'
+      this.platformVersion = '--'
+    }
+
+    if (device && typeof device.getTotalStorage === 'function') {
+      device.getTotalStorage({
+        success: (data) => {
+          this.totalStorage = this.formatStorage(data.totalStorage)
+        },
+        fail: () => {},
+        complete: () => {}
+      })
+    } else {
+      this.totalStorage = '--'
+    }
+
+    if (device && typeof device.getAvailableStorage === 'function') {
+      device.getAvailableStorage({
+        success: (data) => {
+          this.availableStorage = this.formatStorage(data.availableStorage)
+        },
+        fail: () => {},
+        complete: () => {}
+      })
+    } else {
+      this.availableStorage = '--'
+    }
+  },
+
+  formatStorage(bytes) {
+    if (bytes === undefined || bytes === null) {
+      return '--'
+    }
+    const megabytes = bytes / 1024 / 1024
+    if (megabytes >= 1024) {
+      return (megabytes / 1024).toFixed(1) + ' GB'
+    }
+    return megabytes.toFixed(1) + ' MB'
+  },
+
+  onAiInput(event) {
+    this.aiQuery = event.value || ''
+  },
+
+  setAiReply(text) {
+    const content = text || ''
+    const lines = []
+    for (let offset = 0; offset < content.length; offset += 46) {
+      lines.push(content.slice(offset, offset + 46))
+    }
+    this.aiReply = content
+    this.aiReplyLines = lines.length > 0 ? lines : ['AI 没有返回文字内容。']
+  },
+
+  askAI() {
+    const query = (this.aiQuery || '').trim()
+    if (!query) {
+      this.aiMessage = '请先输入问题'
+      return
+    }
+    if (this.aiBusy) {
+      return
+    }
+    if (!velaclaw || typeof velaclaw.ask !== 'function') {
+      this.aiBusy = false
+      this.setAiReply('当前模拟器未提供端侧 AI 接口，请在 openvela QEMU 或真机中启动 ai_agent 后再试。')
+      this.aiMessage = '当前环境不支持 system.velaclaw'
+      return
+    }
+    this.lastQuestion = query
+    this.setAiReply('正在连接端侧 AI Agent...')
+    this.aiMessage = ''
+    this.aiBusy = true
+    velaclaw.ask({
+      query: query,
+      success: (result) => {
+        this.setAiReply(result.reply || 'AI 已响应，但没有返回文字内容。')
+      },
+      fail: (data, code) => {
+        this.setAiReply('AI 暂时不可用，请确认 ai_agent 已在后台运行。')
+        this.aiMessage = '错误码：' + code
+      },
+      complete: () => {
+        this.aiBusy = false
+      }
+    })
+  },
+
+  requestVoice(command, onSuccess) {
+    if (this.aiBusy) {
+      return
+    }
+    if (!velaclaw || typeof velaclaw.ask !== 'function') {
+      this.voiceListening = false
+      this.aiMessage = '当前模拟器不支持语音识别，请在 QEMU 或真机中验证'
+      return
+    }
+    this.aiBusy = true
+    velaclaw.ask({
+      query: command,
+      success: (result) => {
+        onSuccess(result.reply || '')
+      },
+      fail: (data, code) => {
+        this.voiceListening = false
+        this.aiMessage = '语音识别失败，错误码：' + code
+      },
+      complete: () => {
+        this.aiBusy = false
+      }
+    })
+  },
+
+  startVoiceInput() {
+    if (this.voiceListening) {
+      this.aiMessage = '正在听，请说完后点击“停止并识别”'
+      return
+    }
+    this.aiMessage = '正在启动麦克风...'
+    this.requestVoice('__VELACLAW_VOICE_START__', () => {
+      this.voiceListening = true
+      this.aiMessage = '正在听，请说完后点击“停止并识别”'
+    })
+  },
+
+  stopVoiceInput() {
+    if (!this.voiceListening) {
+      this.aiMessage = '请先点击“开始说话”'
+      return
+    }
+    this.aiMessage = '正在停止并识别...'
+    this.requestVoice('__VELACLAW_VOICE_STOP__', (text) => {
+      this.voiceListening = false
+      if (text) {
+        this.aiQuery = text
+        this.aiMessage = '识别完成，请确认文字后发送'
+      } else {
+        this.aiMessage = '没有识别到文字，请重试'
+      }
+    })
+  },
+
+  askStatusPreset() {
+    this.aiQuery = '请分析当前设备状态：网络 ' + this.networkType + '，电量 ' + this.batteryDisplay + '，可用存储 ' + this.availableStorage + '，并给出一条简短建议。'
+    this.askAI()
+  },
+
+  askStudyPreset() {
+    this.aiQuery = '我还有 ' + this.pendingCount + ' 项学习任务，下一项是“' + this.nextTaskText + '”。请给我一条简短、可执行的学习建议。'
+    this.askAI()
+  },
+
+  onReminderSetting(event) {
+    this.remindersEnabled = event.checked
+    this.saveSettings()
+  },
+
+  onAutoRefreshSetting(event) {
+    this.autoRefreshEnabled = event.checked
+    this.applyAutoRefresh()
+    this.saveSettings()
+  },
+
+  onFocusModeSetting(event) {
+    this.focusModeEnabled = event.checked
+    if (!this.focusModeEnabled) {
+      this.resetFocus()
+    }
+    this.saveSettings()
+  },
+
+  applyAutoRefresh() {
+    this.stopAutoRefresh()
+    if (this.autoRefreshEnabled) {
+      this.autoRefreshTimer = setInterval(() => {
+        this.refreshStatus()
+      }, 15000)
+    }
+  },
+
+  stopAutoRefresh() {
+    if (this.autoRefreshTimer) {
+      clearInterval(this.autoRefreshTimer)
+      this.autoRefreshTimer = null
+    }
+  },
+
+  saveSettings() {
+    const settings = {
+      remindersEnabled: this.remindersEnabled,
+      autoRefreshEnabled: this.autoRefreshEnabled,
+      focusModeEnabled: this.focusModeEnabled
+    }
+    storage.set({
+      key: SETTINGS_KEY,
+      value: JSON.stringify(settings),
+      success: () => {
+        this.settingsMessage = '设置已保存'
+      },
+      fail: (data, code) => {
+        this.settingsMessage = '设置保存失败：' + code
+      },
+      complete: () => {}
+    })
+  },
+
+  loadSettings() {
+    storage.get({
+      key: SETTINGS_KEY,
+      success: (data) => {
+        try {
+          const settings = JSON.parse(data)
+          if (settings.remindersEnabled !== undefined) {
+            this.remindersEnabled = settings.remindersEnabled
+          }
+          if (settings.autoRefreshEnabled !== undefined) {
+            this.autoRefreshEnabled = settings.autoRefreshEnabled
+          }
+          if (settings.focusModeEnabled !== undefined) {
+            this.focusModeEnabled = settings.focusModeEnabled
+          }
+          this.applyAutoRefresh()
+        } catch (error) {
+          this.applyAutoRefresh()
+        }
+      },
+      fail: () => {
+        this.applyAutoRefresh()
+      },
+      complete: () => {}
+    })
+  },
+
+  resetDemoData() {
+    this.tasks = [
+      { id: 1, text: '复习 openvela Quick App 基础', done: false },
+      { id: 2, text: '验证 AI 助手工具调用', done: false },
+      { id: 3, text: '整理今日演示记录', done: true }
+    ]
+    this.remindersEnabled = true
+    this.autoRefreshEnabled = true
+    this.focusModeEnabled = true
+    this.syncTaskSummary()
+    this.resetFocus()
+    this.applyAutoRefresh()
+    this.saveTasks()
+    this.saveSettings()
+    this.settingsMessage = '演示数据已恢复'
+  }
+}
+</script>
+<style>
+.app {
+  width: 100%;
+  height: 100%;
+  flex-direction: column;
+  background-color: #f3f6fa;
+}
+
+.topbar {
+  width: 100%;
+  height: 86px;
+  padding-left: 30px;
+  padding-right: 30px;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  background-color: #fbfcfe;
+  border-bottom-width: 1px;
+  border-bottom-color: #e8edf4;
+}
+
+.brand, .top-status, .page-heading, .heading-actions, .focus-panel, .summary-panel,
+.info-row, .metric-grid, .detail-grid, .workspace, .task-row, .voice-actions,
+.question, .setting-row, .bottom-nav {
+  flex-direction: row;
+}
+
+.brand, .top-status, .heading-actions, .info-row, .task-row,
+.question, .setting-row {
+  align-items: center;
+}
+
+.brand-badge {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  background-color: #3482ff;
+  color: #ffffff;
+  font-size: 25px;
+  font-weight: bold;
+  text-align: center;
+  line-height: 54px;
+}
+
+.brand-copy, .heading-copy, .home-main, .home-side, .focus-copy, .focus-actions,
+.summary-cell, .next-cell, .quick-panel, .glance-panel, .column-page, .metric,
+.detail-card, .task-panel, .control-panel, .task-copy, .conversation, .answer,
+.settings-panel, .setting-copy, .about-panel, .nav-item {
+  flex-direction: column;
+}
+
+.brand-copy {
+  margin-left: 14px;
+}
+
+.brand-title {
+  color: #1f2329;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.brand-sub {
+  margin-top: 2px;
+  color: #7a8492;
+  font-size: 15px;
+}
+
+.top-status {
+  height: 54px;
+}
+
+.online-dot, .offline-dot {
+  margin-right: 7px;
+  color: #22a06b;
+  font-size: 20px;
+}
+
+.offline-dot {
+  color: #b34f4f;
+}
+
+.top-text {
+  margin-right: 24px;
+  color: #657080;
+  font-size: 18px;
+}
+
+.clock {
+  width: 90px;
+  color: #1f2329;
+  font-size: 28px;
+  font-weight: bold;
+  text-align: right;
+}
+
+.notice {
+  position: absolute;
+  top: 73px;
+  left: 330px;
+  width: 620px;
+  height: 58px;
+  padding-left: 18px;
+  padding-right: 18px;
+  flex-direction: row;
+  align-items: center;
+  background-color: #fff4dc;
+  border-width: 1px;
+  border-color: #e7ae3b;
+  border-radius: 6px;
+}
+
+.notice-title {
+  width: 70px;
+  color: #9a5d00;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.notice-text {
+  width: 450px;
+  color: #6d4a0d;
+  font-size: 18px;
+}
+
+.notice-close {
+  width: 64px;
+  color: #9a5d00;
+  font-size: 16px;
+  text-align: right;
+}
+
+.content {
+  width: 100%;
+  height: 614px;
+}
+
+.page {
+  width: 100%;
+  height: 614px;
+  padding: 24px 30px;
+}
+
+.home-page {
+  flex-direction: row;
+}
+
+.home-main {
+  width: 790px;
+  height: 566px;
+  margin-right: 24px;
+}
+
+.home-side {
+  width: 406px;
+  height: 566px;
+}
+
+.page-heading {
+  width: 100%;
+  height: 82px;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.eyebrow {
+  color: #3482ff;
+  font-size: 15px;
+  font-weight: bold;
+}
+
+.page-title {
+  margin-top: 4px;
+  color: #1f2329;
+  font-size: 31px;
+  font-weight: bold;
+}
+
+.heading-meta, .task-count, .ai-state {
+  margin-top: 13px;
+  color: #6e7b8f;
+  font-size: 18px;
+}
+
+.focus-panel {
+  width: 100%;
+  height: 286px;
+  padding: 30px 34px;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #fbfcfe;
+  border-width: 1px;
+  border-color: #ffffff;
+  border-radius: 20px;
+}
+
+.panel-label, .panel-title, .metric-label {
+  color: #657080;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.focus-time {
+  margin-top: 8px;
+  color: #1f2329;
+  font-size: 86px;
+  font-weight: bold;
+}
+
+.muted {
+  color: #7a8492;
+  font-size: 17px;
+}
+
+.focus-actions {
+  width: 190px;
+}
+
+.primary-btn, .secondary-btn, .accent-btn, .side-btn, .danger-btn, .small-btn {
+  border-radius: 16px;
+  font-size: 19px;
+  text-align: center;
+}
+
+.primary-btn {
+  width: 190px;
+  height: 58px;
+  color: #ffffff;
+  background-color: #3482ff;
+}
+
+.secondary-btn {
+  width: 190px;
+  height: 52px;
+  margin-top: 12px;
+  color: #394150;
+  background-color: #edf2f8;
+}
+
+.summary-panel {
+  width: 100%;
+  height: 174px;
+  margin-top: 20px;
+  padding: 20px 24px;
+  align-items: center;
+  background-color: #fbfcfe;
+  border-width: 1px;
+  border-color: #ffffff;
+  border-radius: 20px;
+}
+
+.summary-cell {
+  width: 170px;
+  height: 124px;
+  justify-content: center;
+  border-right-width: 1px;
+  border-right-color: #dce3ec;
+}
+
+.next-cell {
+  width: 400px;
+  height: 124px;
+  padding-left: 28px;
+  justify-content: center;
+}
+
+.summary-number {
+  color: #3482ff;
+  font-size: 48px;
+  font-weight: bold;
+}
+
+.done-number {
+  color: #22a06b;
+}
+
+.summary-label {
+  margin-top: 5px;
+  color: #78869b;
+  font-size: 16px;
+}
+
+.next-task {
+  color: #2f3540;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.quick-panel, .glance-panel, .control-panel, .about-panel {
+  padding: 22px;
+  background-color: #fbfcfe;
+  border-width: 1px;
+  border-color: #ffffff;
+  border-radius: 20px;
+}
+
+.quick-panel {
+  width: 100%;
+  height: 305px;
+}
+
+.accent-btn {
+  width: 100%;
+  height: 56px;
+  margin-top: 17px;
+  color: #ffffff;
+  background-color: #ff8a4c;
+}
+
+.side-btn, .danger-btn {
+  width: 100%;
+  height: 51px;
+  margin-top: 12px;
+  color: #394150;
+  background-color: #edf2f8;
+}
+
+.danger-btn {
+  color: #d45757;
+  background-color: #fff0ef;
+}
+
+.glance-panel {
+  width: 100%;
+  height: 241px;
+  margin-top: 20px;
+}
+
+.info-row {
+  width: 100%;
+  height: 52px;
+  justify-content: space-between;
+  border-bottom-width: 1px;
+  border-bottom-color: #edf1f6;
+}
+
+.info-key, .info-value {
+  color: #607087;
+  font-size: 17px;
+}
+
+.info-value {
+  color: #26344a;
+  font-weight: bold;
+}
+
+.heading-actions {
+  height: 58px;
+}
+
+.small-btn {
+  width: 100px;
+  height: 46px;
+  margin-left: 18px;
+  color: #ffffff;
+  background-color: #3482ff;
+}
+
+.metric-grid {
+  width: 100%;
+  height: 210px;
+  justify-content: space-between;
+}
+
+.metric {
+  width: 286px;
+  height: 190px;
+  padding: 22px;
+  border-radius: 8px;
+  border-width: 1px;
+  border-color: #d2ddd7;
+  background-color: #f7faf8;
+}
+
+.blue-top {
+  border-top-width: 5px;
+  border-top-color: #719c99;
+}
+
+.green-top {
+  border-top-width: 5px;
+  border-top-color: #6fa78f;
+}
+
+.orange-top {
+  border-top-width: 5px;
+  border-top-color: #d79a77;
+}
+
+.purple-top {
+  border-top-width: 5px;
+  border-top-color: #9b8aae;
+}
+
+.metric-value {
+  margin-top: 16px;
+  margin-bottom: 8px;
+  color: #243c3a;
+  font-size: 43px;
+  font-weight: bold;
+}
+
+.compact {
+  font-size: 34px;
+}
+
+.detail-grid {
+  width: 100%;
+  height: 250px;
+  margin-top: 18px;
+  justify-content: space-between;
+}
+
+.detail-card {
+  width: 286px;
+  height: 230px;
+  padding: 24px;
+  justify-content: center;
+  background-color: #f7faf8;
+  border-width: 1px;
+  border-color: #d2ddd7;
+  border-radius: 8px;
+}
+
+.detail-label {
+  color: #697a75;
+  font-size: 17px;
+}
+
+.detail-value {
+  width: 238px;
+  height: 104px;
+  margin-top: 16px;
+  color: #314743;
+  font-size: 22px;
+  font-weight: bold;
+  line-height: 31px;
+}
+
+.task-count {
+  color: #557b78;
+  font-weight: bold;
+}
+
+.workspace {
+  width: 100%;
+  height: 460px;
+}
+
+.task-panel {
+  width: 820px;
+  height: 460px;
+  margin-right: 24px;
+  background-color: #f7faf8;
+  border-width: 1px;
+  border-color: #d2ddd7;
+  border-radius: 8px;
+}
+
+.task-list {
+  width: 100%;
+  height: 458px;
+}
+
+.task-row {
+  width: 100%;
+  height: 94px;
+  padding: 15px 24px;
+  border-bottom-width: 1px;
+  border-bottom-color: #e5eaf1;
+}
+
+.task-check {
+  width: 48px;
+  color: #557b78;
+  font-size: 30px;
+}
+
+.task-copy {
+  width: 710px;
+}
+
+.task-text {
+  color: #314743;
+  font-size: 21px;
+}
+
+.task-done {
+  color: #8b96a7;
+  text-decoration: line-through;
+}
+
+.task-state {
+  margin-top: 5px;
+  color: #8b96a7;
+  font-size: 15px;
+}
+
+.empty-state {
+  width: 100%;
+  height: 220px;
+  padding-top: 65px;
+  align-items: center;
+  flex-direction: column;
+}
+
+.empty-title {
+  margin-bottom: 10px;
+  color: #344258;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.control-panel {
+  width: 376px;
+  height: 460px;
+}
+
+.root-text-input {
+  position: absolute;
+  left: 896px;
+  top: 257px;
+  width: 332px;
+  height: 62px;
+  padding-left: 16px;
+  padding-right: 16px;
+  color: #314743;
+  font-size: 18px;
+  background-color: #fbfdfc;
+  border-width: 1px;
+  border-color: #b9cbc2;
+  border-radius: 6px;
+}
+
+.ai-root-input {
+  height: 70px;
+}
+
+.native-input-space {
+  width: 100%;
+  height: 74px;
+  margin-top: 12px;
+}
+
+.ai-input-space {
+  height: 82px;
+}
+
+.full-btn {
+  width: 100%;
+  margin-top: 0;
+}
+
+.form-message {
+  width: 100%;
+  height: 36px;
+  margin-top: 9px;
+  color: #6e7b8f;
+  font-size: 15px;
+}
+
+.divider {
+  width: 100%;
+  height: 1px;
+  margin-top: 8px;
+  margin-bottom: 6px;
+  background-color: #dce3ec;
+}
+
+.conversation {
+  width: 820px;
+  height: 460px;
+  margin-right: 24px;
+}
+
+.question {
+  width: 100%;
+  height: 86px;
+  padding: 16px 20px;
+  background-color: #dfecea;
+  border-radius: 8px;
+}
+
+.speaker {
+  width: 52px;
+  font-size: 18px;
+  font-weight: bold;
+}
+
+.user-speaker {
+  color: #557b78;
+}
+
+.question-text {
+  width: 720px;
+  color: #314743;
+  font-size: 19px;
+}
+
+.answer {
+  width: 100%;
+  height: 356px;
+  margin-top: 18px;
+  padding: 18px 20px;
+  background-color: #f7faf8;
+  border-width: 1px;
+  border-color: #d2ddd7;
+  border-radius: 8px;
+}
+
+.ai-speaker {
+  height: 36px;
+  color: #3e7f68;
+}
+
+.answer-list {
+  width: 100%;
+  height: 278px;
+}
+
+.answer-row {
+  width: 100%;
+  height: 84px;
+  padding-bottom: 8px;
+}
+
+.answer-text {
+  width: 100%;
+  height: 76px;
+  color: #344258;
+  font-size: 20px;
+  line-height: 31px;
+}
+
+.voice-actions {
+  width: 100%;
+  height: 52px;
+  margin-top: 10px;
+  justify-content: space-between;
+}
+
+.voice-btn {
+  width: 160px;
+  height: 52px;
+  border-radius: 6px;
+  font-size: 17px;
+  text-align: center;
+}
+
+.voice-start {
+  color: #ffffff;
+  background-color: #3e7f68;
+}
+
+.voice-stop {
+  color: #765142;
+  background-color: #f2ddd3;
+}
+
+.ai-state {
+  color: #3e7f68;
+  font-weight: bold;
+}
+
+.settings-panel {
+  width: 820px;
+  height: 460px;
+  margin-right: 24px;
+  background-color: #f7faf8;
+  border-width: 1px;
+  border-color: #d2ddd7;
+  border-radius: 8px;
+}
+
+.setting-row {
+  width: 100%;
+  height: 152px;
+  padding: 24px 30px;
+  justify-content: space-between;
+  border-bottom-width: 1px;
+  border-bottom-color: #e5eaf1;
+}
+
+.setting-copy {
+  width: 660px;
+}
+
+.setting-title {
+  margin-bottom: 8px;
+  color: #314743;
+  font-size: 22px;
+  font-weight: bold;
+}
+
+.about-panel {
+  width: 376px;
+  height: 460px;
+}
+
+.about-title {
+  margin-top: 28px;
+  color: #314743;
+  font-size: 24px;
+  font-weight: bold;
+}
+
+.about-text {
+  margin-top: 16px;
+  color: #78869b;
+  font-size: 17px;
+}
+
+.reset-btn {
+  margin-top: 44px;
+}
+
+.bottom-nav {
+  width: 100%;
+  height: 100px;
+  background-color: #f7faf8;
+  border-top-width: 1px;
+  border-top-color: #d2ddd7;
+}
+
+.nav-item {
+  width: 20%;
+  height: 100px;
+  align-items: center;
+  justify-content: center;
+  border-top-width: 4px;
+  border-top-color: transparent;
+}
+
+.nav-active {
+  background-color: #dfecea;
+  border-top-color: #557b78;
+}
+
+.nav-symbol {
+  height: 43px;
+  color: #526176;
+  font-size: 27px;
+  font-weight: bold;
+  text-align: center;
+}
+
+.nav-label {
+  color: #526176;
+  font-size: 17px;
+}
+/* High-fidelity layout aligned to high-fidelity-crops. */
+.app { background-color: #eef3ff; }
+.topbar { height: 76px; padding-left: 30px; padding-right: 30px; background-color: #f7f9ff; border-bottom-width: 0; }
+.screen-title { color: #152449; font-size: 29px; font-weight: bold; }
+.top-status { flex-direction: row; align-items: center; height: 54px; }
+.status-icon { width: 50px; color: #294273; font-size: 27px; text-align: center; }
+.clock { width: 90px; color: #294273; font-size: 25px; font-weight: normal; text-align: center; }
+.settings-entry { width: 70px; height: 48px; color: #294273; font-size: 18px; text-align: center; line-height: 48px; }
+.content { height: 634px; }
+.page { height: 634px; padding: 0 30px 18px; }
+.glass-card, .system-strip, .action-card, .health-banner, .metric-card, .network-card, .trend-card, .advice-card, .task-main-card, .progress-card, .task-control-card, .bubble, .answer-bubble, .tool-card, .ai-reminder-strip, .setting-card { background-color: #fbfcff; border-width: 1px; border-color: #ffffff; border-radius: 22px; }
+.card-title { color: #17254a; font-size: 23px; font-weight: bold; }
+.home-page { flex-direction: column; }
+.home-upper { width: 100%; height: 334px; flex-direction: row; justify-content: space-between; }
+.today-card { width: 650px; height: 334px; padding: 24px 30px; }
+.ai-reminder-card { width: 540px; height: 334px; padding: 24px 30px; align-items: center; }
+.focus-task { width: 100%; height: 105px; margin-top: 17px; padding: 16px 20px; flex-direction: row; align-items: center; background-color: #ffffff; border-radius: 20px; }
+.task-icon, .action-icon, .setting-icon { width: 58px; height: 58px; border-radius: 16px; font-size: 23px; font-weight: bold; text-align: center; line-height: 58px; }
+.blue-soft { color: #3979ff; background-color: #e4efff; }.green-soft { color: #2bbd9b; background-color: #def7ef; }.orange-soft { color: #f38b39; background-color: #fff0dc; }.gray-soft { color: #75809a; background-color: #e9edf5; }
+.focus-task-copy { width: 410px; margin-left: 18px; }.focus-task-title { width: 410px; color: #17254a; font-size: 20px; font-weight: bold; }
+.progress-track { width: 100%; height: 10px; margin-top: 14px; background-color: #e4e9f4; border-radius: 6px; }.progress-fill { height: 10px; border-radius: 6px; }.progress-blue { width: 60%; background-color: #4e83ff; }.progress-green { width: 30%; background-color: #43c7a7; }
+.progress-text { width: 74px; color: #283554; font-size: 22px; text-align: right; }
+.ai-orb { width: 96px; height: 96px; margin-top: 30px; color: #ffffff; background-color: #7181ff; border-radius: 48px; font-size: 45px; font-weight: bold; text-align: center; line-height: 96px; }
+.reminder-copy { width: 430px; height: 72px; margin-top: 25px; color: #273252; font-size: 20px; line-height: 31px; text-align: center; }
+.system-strip { width: 100%; height: 68px; margin-top: 16px; padding: 0 30px; flex-direction: row; align-items: center; }.system-ok { width: 330px; color: #183153; font-size: 20px; font-weight: bold; }.strip-value { width: 210px; color: #697592; font-size: 18px; text-align: center; }.strip-dot { width: 40px; color: #b4c0d7; font-size: 21px; text-align: center; }
+.home-actions { width: 100%; height: 150px; margin-top: 16px; flex-direction: row; justify-content: space-between; }.action-card { width: 592px; height: 150px; padding: 0 34px; flex-direction: row; align-items: center; }.blue-action { color: #ffffff; background-color: #4e83ff; }.purple-action { color: #ffffff; background-color: #8065ed; }.action-title { width: 400px; margin-left: 28px; color: #17254a; font-size: 26px; font-weight: bold; }.action-arrow { width: 40px; color: #6b7895; font-size: 42px; text-align: right; }
+.status-page { flex-direction: column; }.health-banner { width: 100%; height: 132px; padding: 20px 34px; flex-direction: row; align-items: center; }.shield-icon { width: 86px; height: 86px; color: #ffffff; background-color: #5d88f8; border-radius: 43px; font-size: 34px; text-align: center; line-height: 86px; }.health-copy { width: 890px; margin-left: 28px; }.health-title { color: #17254a; font-size: 27px; font-weight: bold; }.health-sub { margin-top: 8px; color: #687591; font-size: 18px; }.refresh-btn { width: 130px; height: 52px; color: #ffffff; background-color: #4d7eff; border-radius: 18px; font-size: 18px; }
+.metric-grid { width: 100%; height: 200px; margin-top: 18px; flex-direction: row; justify-content: space-between; }.metric-card { width: 286px; height: 200px; padding: 22px 26px; }.metric-title { font-size: 20px; font-weight: bold; }.blue-text { color: #4b7fff; }.purple-text { color: #8065ed; }.green-text { color: #31b895; }.orange-text { color: #f07f42; }.metric-main { width: 100%; height: 68px; margin-top: 16px; color: #17254a; font-size: 43px; font-weight: bold; }.small-main { font-size: 31px; }.metric-sub { color: #77829a; font-size: 17px; }
+.status-bottom { width: 100%; height: 245px; margin-top: 18px; flex-direction: row; justify-content: space-between; }.network-card { width: 330px; height: 245px; padding: 25px; }.trend-card { width: 480px; height: 245px; padding: 25px; }.advice-card { width: 350px; height: 245px; padding: 25px; }.detail-line, .trend-label { width: 100%; margin-top: 22px; color: #66738f; font-size: 18px; }.trend-wave { width: 100%; height: 82px; margin-top: 27px; color: #7d91ff; font-size: 36px; text-align: center; }.advice-copy { width: 100%; height: 74px; margin-top: 28px; color: #4e5b78; font-size: 19px; line-height: 29px; }
+.tasks-page { flex-direction: row; justify-content: space-between; }.task-main-card { width: 760px; height: 598px; padding: 24px 30px; }.task-list { width: 100%; height: 520px; margin-top: 16px; }.task-row { width: 100%; height: 120px; padding: 18px 22px; flex-direction: row; align-items: center; background-color: #ffffff; border-radius: 20px; margin-bottom: 14px; }.task-copy { width: 560px; margin-left: 20px; }.task-text { color: #17254a; font-size: 21px; font-weight: bold; }.task-done { color: #8c96aa; text-decoration: line-through; }.task-state { margin-top: 10px; color: #7a859c; font-size: 16px; }
+.task-side { width: 430px; height: 598px; flex-direction: column; }.progress-card { width: 100%; height: 235px; padding: 24px; align-items: center; }.progress-ring { width: 150px; height: 150px; margin-top: 8px; color: #17254a; background-color: #e8edff; border-radius: 75px; font-size: 42px; font-weight: bold; text-align: center; line-height: 150px; }.progress-caption { color: #697592; font-size: 18px; }.task-control-card { width: 100%; height: 345px; margin-top: 18px; padding: 22px; }.task-input-space { width: 100%; height: 74px; margin-top: 14px; }.primary-pill, .soft-pill { width: 100%; height: 52px; margin-top: 10px; border-radius: 22px; font-size: 18px; }.primary-pill { color: #ffffff; background-color: #5c6df8; }.soft-pill { color: #405073; background-color: #eef1fb; }.danger-text { color: #c85863; }.form-message { width: 100%; height: 28px; margin-top: 8px; color: #6d7892; font-size: 14px; }
+.root-input { position: absolute; height: 39px; padding-left: 13px; padding-right: 13px; color: #253352; background-color: #f3f6fc; border-width: 1px; border-color: #cfd8ec; border-radius: 15px; font-size: 13px; }.task-root-input { left: 568px; top: 292px; width: 238px; }
+.ai-page { position: relative; }.ai-main { width: 770px; height: 410px; }.bubble-row { width: 100%; min-height: 86px; margin-bottom: 16px; flex-direction: row; align-items: flex-start; }.user-row { justify-content: flex-end; }.avatar { width: 66px; height: 66px; border-radius: 33px; color: #ffffff; font-size: 24px; font-weight: bold; text-align: center; line-height: 66px; }.ai-avatar { background-color: #657cff; }.user-avatar { background-color: #7a61e8; }.bubble { min-height: 74px; padding: 18px 24px; font-size: 19px; line-height: 29px; }.ai-bubble { width: 610px; margin-left: 18px; color: #17254a; }.user-bubble { width: 540px; margin-right: 18px; color: #233255; background-color: #dfe9ff; }.answer-bubble { width: 610px; height: 142px; margin-left: 18px; padding: 16px 22px; }.answer-list { width: 100%; height: 110px; }.answer-row { width: 100%; height: 52px; }.answer-text { width: 100%; height: 50px; color: #33415f; font-size: 18px; line-height: 25px; }.ai-quick-row { width: 100%; height: 76px; flex-direction: row; justify-content: space-between; }.quick-tool { width: 240px; height: 76px; color: #293858; background-color: #fbfcff; border-radius: 20px; font-size: 19px; }
+.tool-card { position: absolute; left: 820px; top: 0; width: 390px; height: 335px; padding: 32px; }.tool-icon { width: 74px; height: 74px; color: #ffffff; background-color: #7a6cff; border-radius: 37px; font-size: 34px; text-align: center; line-height: 74px; }.tool-title { margin-top: 48px; color: #17254a; font-size: 25px; font-weight: bold; }.tool-sub { margin-top: 18px; color: #64718e; font-size: 18px; }.tool-progress { width: 210px; height: 12px; margin-top: 34px; background-color: #7b7df4; border-radius: 6px; }.ai-reminder-strip { position: absolute; left: 0; top: 426px; width: 1210px; height: 74px; padding: 0 28px; flex-direction: row; align-items: center; }.reminder-time { width: 110px; margin-left: 30px; color: #17254a; font-size: 20px; }.reminder-task { width: 700px; color: #273554; font-size: 19px; }.running-pill { width: 150px; height: 46px; color: #665ce6; background-color: #ebe9ff; border-radius: 22px; font-size: 16px; }
+.ai-root-input { left: 27px; top: 414px; width: 567px; height: 43px; }.voice-actions { position: absolute; left: 900px; top: 522px; width: 310px; height: 64px; flex-direction: row; justify-content: space-between; }.voice-pill, .send-pill { height: 58px; border-radius: 22px; font-size: 16px; }.voice-pill { width: 112px; color: #ffffff; background-color: #6e7cf4; }.stop-pill { background-color: #8c72e8; }.send-pill { width: 72px; color: #ffffff; background-color: #4e83ff; }.ai-message { position: absolute; left: 40px; top: 590px; width: 820px; color: #6c7790; font-size: 14px; }
+.settings-page { flex-direction: column; }.settings-grid { width: 100%; height: 548px; flex-direction: row; flex-wrap: wrap; justify-content: space-between; align-content: space-between; }.setting-card { width: 590px; height: 120px; padding: 20px 26px; flex-direction: row; align-items: center; }.setting-icon { flex-shrink: 0; }.setting-copy { width: 390px; margin-left: 22px; }.setting-title { color: #17254a; font-size: 21px; font-weight: bold; }.setting-sub { margin-top: 8px; color: #707c96; font-size: 17px; }.reset-mini { width: 88px; height: 44px; color: #546483; background-color: #edf1fa; border-radius: 18px; font-size: 15px; }.settings-message { width: 100%; height: 30px; margin-top: 10px; color: #6d7892; font-size: 15px; text-align: center; }
+.bottom-nav { height: 90px; background-color: #fbfcff; border-top-color: #ffffff; border-top-width: 1px; }.nav-item { width: 25%; height: 90px; border-top-width: 0; }.settings-nav { height: 90px; }.nav-active { background-color: #edf0ff; border-radius: 24px; }.nav-symbol { height: 40px; color: #71809f; font-size: 25px; }.nav-label { color: #71809f; font-size: 18px; }.notice { top: 86px; left: 310px; width: 660px; height: 62px; border-radius: 22px; }
+.today-card, .ai-reminder-card, .focus-task-copy, .health-copy, .metric-card, .network-card, .trend-card, .advice-card, .task-main-card, .progress-card, .task-control-card, .ai-page, .ai-main, .tool-card, .setting-copy { flex-direction: column; }
+.screen-title { width: 720px; }.top-status { width: 430px; justify-content: flex-end; }
+.topbar { height: 52px; padding-left: 20px; padding-right: 20px; }.screen-title { width: 480px; font-size: 20px; }.top-status { width: 300px; height: 40px; }.status-icon { width: 34px; font-size: 19px; }.clock { width: 62px; font-size: 18px; }.settings-entry { width: 48px; height: 36px; font-size: 14px; line-height: 36px; }
+.content { height: 423px; }.page { height: 423px; padding: 0 20px 12px; }.bottom-nav { height: 58px; }.nav-item { height: 58px; }.nav-symbol { height: 27px; font-size: 18px; }.nav-label { font-size: 13px; }.card-title { font-size: 16px; }
+.home-upper { height: 223px; }.today-card { width: 433px; height: 223px; padding: 16px 20px; }.ai-reminder-card { width: 360px; height: 223px; padding: 16px 20px; }.focus-task { height: 70px; margin-top: 11px; padding: 10px 13px; border-radius: 14px; }.task-icon, .action-icon, .setting-icon { width: 39px; height: 39px; border-radius: 11px; font-size: 16px; line-height: 39px; }.focus-task-copy { width: 274px; margin-left: 12px; }.focus-task-title { width: 274px; font-size: 14px; }.progress-track { height: 7px; margin-top: 9px; }.progress-fill { height: 7px; }.progress-text { width: 50px; font-size: 15px; }.ai-orb { width: 64px; height: 64px; margin-top: 20px; border-radius: 32px; font-size: 30px; line-height: 64px; }.reminder-copy { width: 286px; height: 48px; margin-top: 16px; font-size: 14px; line-height: 21px; }.system-strip { height: 45px; margin-top: 11px; padding: 0 20px; }.system-ok { width: 220px; font-size: 14px; }.strip-value { width: 140px; font-size: 13px; }.strip-dot { width: 27px; font-size: 14px; }.home-actions { height: 100px; margin-top: 11px; }.action-card { width: 395px; height: 100px; padding: 0 23px; }.action-title { width: 267px; margin-left: 19px; font-size: 18px; }.action-arrow { width: 27px; font-size: 28px; }
+.health-banner { height: 88px; padding: 13px 23px; }.shield-icon { width: 58px; height: 58px; border-radius: 29px; font-size: 23px; line-height: 58px; }.health-copy { width: 590px; margin-left: 19px; }.health-title { font-size: 19px; }.health-sub { margin-top: 5px; font-size: 13px; }.refresh-btn { width: 87px; height: 35px; border-radius: 12px; font-size: 13px; }.metric-grid { height: 133px; margin-top: 12px; }.metric-card { width: 190px; height: 133px; padding: 15px 17px; }.metric-title { font-size: 14px; }.metric-main { height: 45px; margin-top: 10px; font-size: 29px; }.small-main { font-size: 21px; }.metric-sub { font-size: 12px; }.status-bottom { height: 164px; margin-top: 12px; }.network-card { width: 220px; height: 164px; padding: 17px; }.trend-card { width: 320px; height: 164px; padding: 17px; }.advice-card { width: 233px; height: 164px; padding: 17px; }.detail-line, .trend-label { margin-top: 15px; font-size: 13px; }.trend-wave { height: 55px; margin-top: 18px; font-size: 24px; }.advice-copy { height: 50px; margin-top: 19px; font-size: 13px; line-height: 19px; }
+.task-main-card { width: 507px; height: 399px; padding: 16px 20px; }.task-list { height: 347px; margin-top: 11px; }.task-row { height: 80px; padding: 12px 15px; border-radius: 14px; margin-bottom: 9px; }.task-copy { width: 374px; margin-left: 13px; }.task-text { font-size: 15px; }.task-state { margin-top: 7px; font-size: 12px; }.task-side { width: 287px; height: 399px; }.progress-card { height: 157px; padding: 16px; }.progress-ring { width: 100px; height: 100px; margin-top: 5px; border-radius: 50px; font-size: 28px; line-height: 100px; }.progress-caption { font-size: 13px; }.task-control-card { height: 230px; margin-top: 12px; padding: 15px; }.task-input-space { height: 49px; margin-top: 9px; }.primary-pill, .soft-pill { height: 35px; margin-top: 7px; border-radius: 15px; font-size: 13px; }.form-message { height: 19px; margin-top: 5px; font-size: 10px; }.task-root-input { left: 568px; top: 271px; width: 238px; height: 39px; border-radius: 15px; font-size: 13px; }
+.ai-main { width: 513px; height: 273px; }.bubble-row { min-height: 57px; margin-bottom: 11px; }.avatar { width: 44px; height: 44px; border-radius: 22px; font-size: 16px; line-height: 44px; }.bubble { min-height: 49px; padding: 12px 16px; border-radius: 15px; font-size: 13px; line-height: 19px; }.ai-bubble { width: 407px; margin-left: 12px; }.user-bubble { width: 360px; margin-right: 12px; }.answer-bubble { width: 407px; height: 95px; margin-left: 12px; padding: 11px 15px; }.answer-list { height: 73px; }.answer-row { height: 35px; }.answer-text { height: 34px; font-size: 13px; line-height: 17px; }.ai-quick-row { height: 51px; }.quick-tool { width: 160px; height: 51px; border-radius: 14px; font-size: 13px; }.tool-card { left: 547px; top: 0; width: 260px; height: 223px; padding: 21px; }.tool-icon { width: 49px; height: 49px; border-radius: 25px; font-size: 23px; line-height: 49px; }.tool-title { margin-top: 32px; font-size: 17px; }.tool-sub { margin-top: 12px; font-size: 13px; }.tool-progress { width: 140px; height: 8px; margin-top: 23px; }.ai-reminder-strip { top: 284px; width: 807px; height: 49px; padding: 0 19px; }.reminder-time { width: 73px; margin-left: 20px; font-size: 14px; }.reminder-task { width: 467px; font-size: 13px; }.running-pill { width: 100px; height: 31px; border-radius: 15px; font-size: 11px; }.ai-message { left: 27px; top: 393px; width: 547px; font-size: 10px; }.ai-root-input { left: 27px; top: 414px; width: 567px; height: 43px; border-radius: 15px; font-size: 13px; }.voice-actions { left: 600px; top: 348px; width: 207px; height: 43px; }.voice-pill, .send-pill { height: 39px; border-radius: 15px; font-size: 11px; }.voice-pill { width: 75px; }.send-pill { width: 48px; }
+.settings-grid { height: 365px; }.setting-card { width: 393px; height: 80px; padding: 13px 17px; border-radius: 15px; }.setting-copy { width: 260px; margin-left: 15px; }.setting-title { font-size: 15px; }.setting-sub { margin-top: 5px; font-size: 12px; }.reset-mini { width: 59px; height: 29px; border-radius: 12px; font-size: 11px; }.settings-message { height: 20px; margin-top: 7px; font-size: 11px; }
+.app { width: 853px; height: 533px; }.topbar, .content, .bottom-nav { width: 853px; }.page { width: 853px; }.home-upper, .system-strip, .home-actions, .metric-grid, .status-bottom, .settings-grid { width: 813px; }
+.top-chip { width: 48px; height: 28px; margin-right: 4px; color: #536684; background-color: #edf2fb; border-radius: 10px; font-size: 11px; text-align: center; line-height: 28px; }
+.task-inline-input { width: 100%; height: 39px; margin-top: -39px; padding-left: 13px; padding-right: 13px; color: #253352; background-color: transparent; border-width: 0; border-radius: 15px; font-size: 13px; }
+.task-input-shell { width: 100%; height: 39px; margin-top: 9px; padding-left: 13px; align-items: center; background-color: #f3f6fc; border-width: 1px; border-color: #cfd8ec; border-radius: 15px; }
+.task-input-shell-text { color: #7a879e; font-size: 13px; }
+.ai-input-shell { position: absolute; left: 0; top: 348px; width: 567px; height: 43px; padding-left: 15px; align-items: center; background-color: #f8faff; border-width: 1px; border-color: #cfd8ec; border-radius: 15px; }
+.ai-input-shell-text { color: #7a879e; font-size: 13px; }
+.ai-inline-input { position: absolute; left: 0; top: 348px; width: 567px; height: 43px; padding-left: 15px; color: #253352; background-color: transparent; border-width: 0; border-radius: 15px; font-size: 13px; }
+.settings-item { width: 20%; height: 58px; flex-direction: column; align-items: center; justify-content: center; border-top-width: 0; }
+</style>

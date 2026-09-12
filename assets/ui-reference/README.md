@@ -23,5 +23,6 @@ references only and are not intended to be compiled into the firmware.
   and restrained violet, mint, and orange status accents.
 - Keep the top status bar, compact card grid, and bottom navigation hierarchy.
 - Use the five named screens as the acceptance baseline for later screenshots.
-- Do not infer the physical panel resolution until the official board BSP is
-  available. The LVGL layout must adapt to the runtime display resolution.
+- The official DShanPi source config uses a 320x480 RGB565 framebuffer. Keep the
+  LVGL layout adaptive until physical orientation and touch mapping are
+  verified on the real board.
