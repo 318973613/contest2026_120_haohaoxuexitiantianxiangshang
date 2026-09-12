@@ -1,0 +1,115 @@
+{
+  "schema_version": "1.0",
+  "team_id": "contest2026_120_haohaoxuexitiantianxiangshang",
+  "github_login": "318973613",
+  "generator": "claude-code-collector@1.2.0",
+  "updated_at": "2026-09-12T16:28:37.664Z",
+  "sessions": [
+    {
+      "session_id": "0f91c25c-dd40-48da-befb-b5e920346385",
+      "tool": "claude-code",
+      "started_at": "2026-08-10T12:18:35.556Z",
+      "last_event_at": "2026-09-12T16:28:36.586Z",
+      "event_count": 1350,
+      "raw_event_count": 2451,
+      "file_path": "logs/318973613/2026-09-12/claude-code__0f91c25c-dd40-48da-befb-b5e920346385.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "<synthetic>"
+    },
+    {
+      "session_id": "34921069-21c0-4f4b-bc08-b6b1ffb03ba6",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:36.755Z",
+      "last_event_at": "2026-09-12T16:28:36.755Z",
+      "event_count": 3,
+      "raw_event_count": 7,
+      "file_path": "logs/318973613/2026-09-12/claude-code__34921069-21c0-4f4b-bc08-b6b1ffb03ba6.jsonl",
+      "collection_mode": "cli",
+      "health": "ok"
+    },
+    {
+      "session_id": "3a53f343-3165-4d27-b41a-59f00e906ae6",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:36.965Z",
+      "last_event_at": "2026-09-12T16:28:36.965Z",
+      "event_count": 1273,
+      "raw_event_count": 2481,
+      "file_path": "logs/318973613/2026-09-12/claude-code__3a53f343-3165-4d27-b41a-59f00e906ae6.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "claude-opus-5"
+    },
+    {
+      "session_id": "3c1d3ee1-1631-4684-b8d1-01aa4b0abb47",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:37.210Z",
+      "last_event_at": "2026-09-12T16:28:37.210Z",
+      "event_count": 3,
+      "raw_event_count": 7,
+      "file_path": "logs/318973613/2026-09-12/claude-code__3c1d3ee1-1631-4684-b8d1-01aa4b0abb47.jsonl",
+      "collection_mode": "cli",
+      "health": "ok"
+    },
+    {
+      "session_id": "997d77ed-a24b-472f-91a5-dfa6e3e337ca",
+      "tool": "claude-code",
+      "started_at": "2026-08-07T08:59:36.098Z",
+      "last_event_at": "2026-09-12T16:28:37.270Z",
+      "event_count": 213,
+      "raw_event_count": 397,
+      "file_path": "logs/318973613/2026-09-12/claude-code__997d77ed-a24b-472f-91a5-dfa6e3e337ca.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "claude-opus-5"
+    },
+    {
+      "session_id": "b6cc2221-644b-4719-8585-8ab3fec19c84",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:37.320Z",
+      "last_event_at": "2026-09-12T16:28:37.320Z",
+      "event_count": 5,
+      "raw_event_count": 15,
+      "file_path": "logs/318973613/2026-09-12/claude-code__b6cc2221-644b-4719-8585-8ab3fec19c84.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "<synthetic>"
+    },
+    {
+      "session_id": "e4ca417c-1324-40ee-ac43-221782c473c2",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:37.437Z",
+      "last_event_at": "2026-09-12T16:28:37.437Z",
+      "event_count": 411,
+      "raw_event_count": 734,
+      "file_path": "logs/318973613/2026-09-12/claude-code__e4ca417c-1324-40ee-ac43-221782c473c2.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "claude-opus-5"
+    },
+    {
+      "session_id": "ea029ce4-24b2-4b2e-8f6b-716b4217a7bc",
+      "tool": "claude-code",
+      "started_at": "2026-08-07T08:27:34.616Z",
+      "last_event_at": "2026-09-12T16:28:37.531Z",
+      "event_count": 79,
+      "raw_event_count": 146,
+      "file_path": "logs/318973613/2026-09-12/claude-code__ea029ce4-24b2-4b2e-8f6b-716b4217a7bc.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "claude-opus-5"
+    },
+    {
+      "session_id": "fcda1521-cc8e-4c3c-8ec1-1ad2da4b2bd5",
+      "tool": "claude-code",
+      "started_at": "2026-09-12T16:28:37.653Z",
+      "last_event_at": "2026-09-12T16:28:37.653Z",
+      "event_count": 844,
+      "raw_event_count": 1623,
+      "file_path": "logs/318973613/2026-09-12/claude-code__fcda1521-cc8e-4c3c-8ec1-1ad2da4b2bd5.jsonl",
+      "collection_mode": "cli",
+      "health": "ok",
+      "model": "gpt-5.6"
+    }
+  ]
+}
