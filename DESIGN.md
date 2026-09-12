@@ -3,15 +3,40 @@
 ## Source of truth
 
 - Status: Active
-- Last refreshed: 2026-07-11
+- Last refreshed: 2026-07-23
+- Delivery route: repository-owned native LVGL C application plus ai_agent
 - Primary product surfaces: Home, System Status, Study Tasks, AI Assistant,
   Settings
 - Evidence reviewed: `assets/ui-reference/*.png`, `docs/PROGRESS.md`,
-  `docs/AI_AGENT_RUNTIME.md`, `src/skills/study-assistant.md`
+  `docs/AI_AGENT_RUNTIME.md`, `docs/HARDWARE_BSP.md`,
+  `src/skills/study-assistant.md`
 
 The five images under `assets/ui-reference/` are the approved visual baseline.
 Match the interface inside the device screen; ignore the promotional poster
 background and rendered device shell.
+
+Quick App is no longer a delivery target. Its source and screenshots remain
+historical evidence only. New product work must extend `app/hello_app/` and use
+upstream LVGL/NuttX APIs that can be built from source for the DShanPi target.
+
+Do not confuse the historical Quick App prototype with
+`_staging/lvgl-ui-redesign-win`. The latter is a native LVGL C redesign
+developed with a Windows simulator and remains a visual implementation candidate.
+The temporary min-ui and older five-page fallback used for hardware isolation are
+diagnostic builds, not the final visual design.
+
+## Runtime architecture
+
+- `study_terminal`: native LVGL process that owns the five-page UI, touch
+  interaction, system metrics, focus timer, and reminder presentation
+- `ai_agent`: MiMo conversation, tool calls, cron reminders, and the
+  `study-assistant` Skill
+- Initial bridge: bounded files under `/data/ai_agent/` for tasks, sanitized UI
+  status, and the latest assistant reply
+- Later optimization: UDP or message queue only after the file-based path is
+  proven on QEMU and hardware
+- No Quick App RPK, UIKit prebuilt library, or `vapp` runtime dependency in the
+  final product
 
 ## Brand
 
@@ -25,8 +50,8 @@ background and rendered device shell.
 
 - Goals: make study tasks, device health, AI help, and reminders readable at a
   glance on a 3.5-inch touch screen
-- Non-goals: desktop administration, full chat history management, physical BSP
-  adaptation before the official board code is available
+- Non-goals: desktop administration, full chat history management, board-driver
+  redesign, or substituting a similar R528 BSP for the official target
 - Success signals: five screens are reachable, legible, stable, and demonstrable
   in QEMU without modifying public openvela repositories
 
@@ -94,13 +119,15 @@ background and rendered device shell.
 
 ## Responsive behavior
 
-- Supported devices: 3.5-inch physical target and current QEMU framebuffer
+- Supported devices: official 3.5-inch DShanPi target and current QEMU
+  framebuffer
 - Layout adaptations: compute sizes from `LV_HOR_RES` and `LV_VER_RES`; keep
   navigation and status bars fixed while the content grid adapts
 - Touch/hover differences: touch-first; hover is not required
 
-The official DShanPixVela-Devkit V1 panel resolution is still unknown. Do not
-hard-code an assumed physical resolution or borrow a similar R528 BSP.
+The official `r528s3-dshanpi` source config uses a 320x480 RGB565 framebuffer
+with ILI9341 and FT5X06 enabled. Keep layouts resolution-aware until physical
+orientation, touch mapping, and controller behavior are verified on hardware.
 
 ## Interaction states
 
@@ -125,15 +152,19 @@ hard-code an assumed physical resolution or borrow a similar R528 BSP.
 - Design-token constraints: no new public framework or public repository change
 - Performance constraints: static layouts, bounded object count, no large
   reference PNGs compiled into firmware
-- Compatibility constraints: QEMU first; physical board work waits for the
-  official DShanPixVela-Devkit V1 BSP
+- Compatibility constraints: preserve the verified QEMU baseline; physical
+  work uses only the official `r528s3-dshanpi` BSP after its cross-repository
+  patch and build are verified
 - Test/screenshot expectations: build successfully, launch in QEMU, capture all
   five screens, and compare against `assets/ui-reference/`
 
 ## Open questions
 
-- [ ] Confirm the official 3.5-inch panel resolution from the upstream BSP.
-- [ ] Confirm touch controller and input mapping from the upstream BSP.
-- [ ] Select and license a compact Chinese LVGL font before final hardware demo.
+- [x] Identify the upstream board target and source framebuffer: official
+  `r528s3-dshanpi`, 320x480 RGB565.
+- [ ] Verify physical display orientation and touch coordinate mapping.
+- [ ] Confirm whether the older `DShanPixVela-Devkit V1` name is the same board
+  revision as the upstream `r528s3-dshanpi` target.
+- [x] Add and license NotoSansSC for complete Simplified Chinese rendering.
 - [ ] Decide whether the first QEMU milestone uses static demo data or live
   ai_agent/task status for every card.

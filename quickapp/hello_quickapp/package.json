@@ -1,0 +1,19 @@
+{
+  "name": "openvela-study-terminal",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=8.10"
+  },
+  "scripts": {
+    "start": "aiot server --watch --open-nuttx",
+    "build": "aiot build",
+    "release": "aiot release",
+    "watch": "aiot watch --open-nuttx"
+  },
+  "devDependencies": {
+    "@aiot-toolkit/velasim": "^0.1.26-beta.3",
+    "aiot-toolkit": "^2.0.5",
+    "ux-types": "^0.1.1"
+  }
+}

@@ -1,0 +1,39 @@
+# ============================================================
+# 参赛仓 .gitignore
+#
+# 基于官方 .gitignore.example 扩展：除编译产物外，额外忽略本地临时备份、
+# 编辑器残留和 Python 缓存，避免把开发过程中的中间文件误提交。
+#
+# 注意：logs/ 下最终导出的 AI Coding 日志是**必须提交**的交付物，
+# 因此这里刻意不忽略 logs/，也不要加 logs/ 相关规则。
+# ============================================================
+
+# Build artifacts
+build/
+out/
+*.o
+*.a
+*.elf
+*.hex
+*.map
+.built
+.depend
+Make.dep
+
+# Local edit snapshots and pre-merge copies
+*.orig
+*.rej
+*.bak
+*.bak-*
+*.minui-*
+.backup-*/
+
+# Python
+__pycache__/
+*.pyc
+
+# OS / editor leftovers
+.DS_Store
+Thumbs.db
+*~
+*.swp

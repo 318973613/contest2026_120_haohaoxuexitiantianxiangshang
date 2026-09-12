@@ -1,0 +1,6 @@
+config LVX_USE_DEMO_MINUI
+	tristate "Minimal LVGL UI crash probe"
+	default n
+	depends on GRAPHICS_LVGL
+	---help---
+		Minimal LVGL UI used to bisect the flush_cb crash.

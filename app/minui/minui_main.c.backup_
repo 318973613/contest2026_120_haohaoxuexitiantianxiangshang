@@ -1,0 +1,491 @@
+/****************************************************************************
+ * study_terminal - Clean five-page UI redesign on stable v2 foundation
+ *
+ * This builds on the verified minui v2 display initialization and adds:
+ * - Bottom navigation bar (Home / Status / Tasks / AI)
+ * - Five screens with static content
+ * - Simple touch navigation
+ * - No fonts, wallpapers, animations, or external data in v1
+ ****************************************************************************/
+#include <stdbool.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <lvgl/lvgl.h>
+#include <lvgl/src/drivers/nuttx/lv_nuttx_entry.h>
+#ifdef CONFIG_BOARDCTL
+#  include <sys/boardctl.h>
+#endif
+
+/* Color palette - clean, readable design */
+#define COLOR_BG_LIGHT      0xf3f7fb  /* Light blue-grey background */
+#define COLOR_SURFACE       0xffffff  /* White cards */
+#define COLOR_SURFACE_ALT   0xe5edf7  /* Light grey alternate */
+#define COLOR_TEXT_PRIMARY  0x17314f  /* Dark blue-grey text */
+#define COLOR_TEXT_MUTED    0x61727d  /* Muted text */
+#define COLOR_BLUE_PRIMARY  0x246bfd  /* Primary blue */
+#define COLOR_BLUE_LIGHT    0x4a88ff  /* Light blue */
+#define COLOR_TEAL          0x0f9f8f  /* Teal accent */
+#define COLOR_PURPLE        0x7158d9  /* Purple for AI */
+#define COLOR_GREEN         0x209765  /* Success green */
+#define COLOR_AMBER         0xeaa126  /* Warning amber */
+
+/* Page indices */
+enum {
+  PAGE_HOME = 0,
+  PAGE_STATUS,
+  PAGE_TASKS,
+  PAGE_AI,
+  PAGE_SETTINGS,
+  PAGE_COUNT
+};
+
+/* Global UI state */
+static struct {
+  lv_obj_t *pages[PAGE_COUNT];      /* Page containers */
+  lv_obj_t *nav_items[4];           /* Bottom nav buttons */
+  int current_page;                 /* Active page index */
+} g_ui;
+
+/****************************************************************************
+ * Helper Functions
+ ****************************************************************************/
+
+static lv_color_t color(uint32_t hex)
+{
+  return lv_color_hex(hex);
+}
+
+/* Create a styled panel (card) */
+static lv_obj_t *create_panel(lv_obj_t *parent, int32_t w, int32_t h,
+                               uint32_t bg_color)
+{
+  lv_obj_t *panel = lv_obj_create(parent);
+  lv_obj_set_size(panel, w, h);
+  lv_obj_set_style_bg_color(panel, color(bg_color), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(panel, LV_OPA_COVER, LV_PART_MAIN);
+  lv_obj_set_style_border_width(panel, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(panel, 6, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(panel, 12, LV_PART_MAIN);
+  lv_obj_remove_flag(panel, LV_OBJ_FLAG_SCROLLABLE);
+  return panel;
+}
+
+/* Create a label with specified properties */
+static lv_obj_t *create_label(lv_obj_t *parent, const char *text,
+                              uint32_t text_color, const lv_font_t *font)
+{
+  lv_obj_t *label = lv_label_create(parent);
+  lv_label_set_text(label, text);
+  lv_obj_set_style_text_color(label, color(text_color), LV_PART_MAIN);
+  if (font) {
+    lv_obj_set_style_text_font(label, font, LV_PART_MAIN);
+  }
+  return label;
+}
+
+/* Create a simple button */
+static lv_obj_t *create_button(lv_obj_t *parent, const char *text,
+                               uint32_t bg_color, uint32_t text_color)
+{
+  lv_obj_t *btn = lv_button_create(parent);
+  lv_obj_set_style_bg_color(btn, color(bg_color), LV_PART_MAIN);
+  lv_obj_set_style_radius(btn, 6, LV_PART_MAIN);
+  lv_obj_set_style_border_width(btn, 0, LV_PART_MAIN);
+
+  lv_obj_t *label = lv_label_create(btn);
+  lv_label_set_text(label, text);
+  lv_obj_set_style_text_color(label, color(text_color), LV_PART_MAIN);
+  lv_obj_center(label);
+
+  return btn;
+}
+
+/****************************************************************************
+ * Page Builders
+ ****************************************************************************/
+
+/* Build Home Page */
+static void build_home_page(lv_obj_t *page)
+{
+  lv_obj_t *hero, *label;
+  lv_obj_t *row, *left, *right;
+  lv_obj_t *status_bar;
+
+  /* Hero section */
+  hero = create_panel(page, 440, 80, COLOR_BLUE_PRIMARY);
+  lv_obj_align(hero, LV_ALIGN_TOP_MID, 0, 10);
+
+  label = create_label(hero, "STUDY TERMINAL", COLOR_SURFACE,
+                      NULL);
+  lv_obj_center(label);
+
+  /* Two-column cards */
+  row = lv_obj_create(page);
+  lv_obj_set_size(row, 440, 100);
+  lv_obj_align(row, LV_ALIGN_TOP_MID, 0, 100);
+  lv_obj_set_style_bg_opa(row, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(row, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(row, 0, LV_PART_MAIN);
+  lv_obj_set_flex_flow(row, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(row, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+
+  /* Left: Today's Focus */
+  left = create_panel(row, 210, 100, COLOR_SURFACE);
+  label = create_label(left, "Today's Focus", COLOR_TEXT_PRIMARY, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+
+  label = create_label(left, "3 tasks", COLOR_TEXT_MUTED, NULL);
+  lv_obj_align(label, LV_ALIGN_BOTTOM_LEFT, 0, 0);
+
+  /* Right: Focus Timer */
+  right = create_panel(row, 210, 100, COLOR_SURFACE);
+  label = create_label(right, "Focus Timer", COLOR_TEXT_PRIMARY, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+
+  label = create_label(right, "25:00", COLOR_BLUE_PRIMARY,
+                      NULL);
+  lv_obj_center(label);
+
+  /* Status bar */
+  status_bar = create_panel(page, 440, 50, COLOR_SURFACE_ALT);
+  lv_obj_align(status_bar, LV_ALIGN_TOP_MID, 0, 210);
+
+  label = create_label(status_bar, "CPU 8%  MEM 42%  NET OK",
+                      COLOR_TEXT_MUTED, NULL);
+  lv_obj_center(label);
+}
+
+/* Build Status Page */
+static void build_status_page(lv_obj_t *page)
+{
+  lv_obj_t *title, *grid, *card, *label;
+
+  /* Title */
+  title = create_label(page, "System Status", COLOR_TEXT_PRIMARY,
+                      NULL);
+  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 10);
+
+  /* Grid of status cards */
+  grid = lv_obj_create(page);
+  lv_obj_set_size(grid, 440, 200);
+  lv_obj_align(grid, LV_ALIGN_TOP_MID, 0, 50);
+  lv_obj_set_style_bg_opa(grid, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(grid, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(grid, 0, LV_PART_MAIN);
+  lv_obj_set_flex_flow(grid, LV_FLEX_FLOW_ROW_WRAP);
+  lv_obj_set_flex_align(grid, LV_FLEX_ALIGN_SPACE_BETWEEN,
+                        LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_gap(grid, 10, LV_PART_MAIN);
+
+  /* CPU card */
+  card = create_panel(grid, 135, 90, COLOR_SURFACE);
+  label = create_label(card, "CPU", COLOR_TEXT_MUTED, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+  label = create_label(card, "8%", COLOR_BLUE_PRIMARY,
+                      NULL);
+  lv_obj_center(label);
+
+  /* Memory card */
+  card = create_panel(grid, 135, 90, COLOR_SURFACE);
+  label = create_label(card, "Memory", COLOR_TEXT_MUTED, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+  label = create_label(card, "42%", COLOR_BLUE_PRIMARY,
+                      NULL);
+  lv_obj_center(label);
+
+  /* Network card */
+  card = create_panel(grid, 135, 90, COLOR_SURFACE);
+  label = create_label(card, "Network", COLOR_TEXT_MUTED, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+  label = create_label(card, "OK", COLOR_GREEN,
+                      NULL);
+  lv_obj_center(label);
+
+  /* Uptime card */
+  card = create_panel(grid, 280, 90, COLOR_SURFACE);
+  label = create_label(card, "Uptime", COLOR_TEXT_MUTED, NULL);
+  lv_obj_align(label, LV_ALIGN_TOP_LEFT, 0, 0);
+  label = create_label(card, "2h 34m", COLOR_TEXT_PRIMARY,
+                      NULL);
+  lv_obj_center(label);
+}
+
+/* Build Tasks Page */
+static void build_tasks_page(lv_obj_t *page)
+{
+  lv_obj_t *title, *list, *item, *label;
+
+  /* Title */
+  title = create_label(page, "Learning Tasks", COLOR_TEXT_PRIMARY,
+                      NULL);
+  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 10);
+
+  /* Task list */
+  list = lv_obj_create(page);
+  lv_obj_set_size(list, 440, 200);
+  lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 50);
+  lv_obj_set_style_bg_color(list, color(COLOR_SURFACE), LV_PART_MAIN);
+  lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(list, 6, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(list, 10, LV_PART_MAIN);
+  lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_gap(list, 8, LV_PART_MAIN);
+
+  /* Sample tasks */
+  const char *tasks[] = {
+    "[ ] Learn LVGL basics",
+    "[ ] Implement navigation",
+    "[x] Read openvela docs",
+    "[ ] Test on hardware"
+  };
+
+  for (int i = 0; i < 4; i++) {
+    item = create_panel(list, 420, 36, COLOR_SURFACE_ALT);
+    label = create_label(item, tasks[i], COLOR_TEXT_PRIMARY, NULL);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
+  }
+}
+
+/* Build AI Page */
+static void build_ai_page(lv_obj_t *page)
+{
+  lv_obj_t *title, *status, *label, *hint;
+
+  /* Title */
+  title = create_label(page, "AI Assistant", COLOR_TEXT_PRIMARY,
+                      NULL);
+  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 10);
+
+  /* Status indicator */
+  status = create_panel(page, 440, 60, COLOR_SURFACE);
+  lv_obj_align(status, LV_ALIGN_TOP_MID, 0, 50);
+
+  label = create_label(status, "Status: Offline", COLOR_TEXT_MUTED, NULL);
+  lv_obj_center(label);
+
+  /* Empty state hint */
+  hint = lv_obj_create(page);
+  lv_obj_set_size(hint, 380, 120);
+  lv_obj_align(hint, LV_ALIGN_CENTER, 0, 10);
+  lv_obj_set_style_bg_opa(hint, LV_OPA_TRANSP, LV_PART_MAIN);
+  lv_obj_set_style_border_width(hint, 0, LV_PART_MAIN);
+
+  label = create_label(hint, "AI assistant not connected.\n\n"
+                       "Connect WiFi and start ai_agent\n"
+                       "to enable conversations.",
+                       COLOR_TEXT_MUTED, NULL);
+  lv_obj_center(label);
+  lv_label_set_long_mode(label, LV_LABEL_LONG_WRAP);
+  lv_obj_set_width(label, 360);
+  lv_obj_set_style_text_align(label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN);
+}
+
+/* Build Settings Page */
+static void build_settings_page(lv_obj_t *page)
+{
+  lv_obj_t *title, *list, *item, *label;
+
+  /* Title */
+  title = create_label(page, "Settings", COLOR_TEXT_PRIMARY,
+                      NULL);
+  lv_obj_align(title, LV_ALIGN_TOP_LEFT, 20, 10);
+
+  /* Settings list */
+  list = lv_obj_create(page);
+  lv_obj_set_size(list, 440, 200);
+  lv_obj_align(list, LV_ALIGN_TOP_MID, 0, 50);
+  lv_obj_set_style_bg_color(list, color(COLOR_SURFACE), LV_PART_MAIN);
+  lv_obj_set_style_border_width(list, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(list, 6, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(list, 10, LV_PART_MAIN);
+  lv_obj_set_flex_flow(list, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_style_pad_gap(list, 8, LV_PART_MAIN);
+
+  /* Sample settings */
+  const char *settings[] = {
+    "WiFi Configuration",
+    "Display Brightness",
+    "Sound Volume",
+    "About"
+  };
+
+  for (int i = 0; i < 4; i++) {
+    item = create_panel(list, 420, 38, COLOR_SURFACE_ALT);
+    label = create_label(item, settings[i], COLOR_TEXT_PRIMARY, NULL);
+    lv_obj_align(label, LV_ALIGN_LEFT_MID, 0, 0);
+  }
+}
+
+/****************************************************************************
+ * Navigation
+ ****************************************************************************/
+
+static void switch_page(int page_index)
+{
+  if (page_index < 0 || page_index >= PAGE_COUNT)
+    return;
+
+  /* Hide all pages */
+  for (int i = 0; i < PAGE_COUNT; i++) {
+    lv_obj_add_flag(g_ui.pages[i], LV_OBJ_FLAG_HIDDEN);
+  }
+
+  /* Show selected page */
+  lv_obj_clear_flag(g_ui.pages[page_index], LV_OBJ_FLAG_HIDDEN);
+
+  /* Update nav button styles (0-3 are bottom nav) */
+  for (int i = 0; i < 4; i++) {
+    if (i == page_index) {
+      lv_obj_set_style_bg_color(g_ui.nav_items[i], color(COLOR_BLUE_PRIMARY),
+                                LV_PART_MAIN);
+      lv_obj_t *label = lv_obj_get_child(g_ui.nav_items[i], 0);
+      lv_obj_set_style_text_color(label, color(COLOR_SURFACE), LV_PART_MAIN);
+    } else {
+      lv_obj_set_style_bg_color(g_ui.nav_items[i], color(COLOR_SURFACE_ALT),
+                                LV_PART_MAIN);
+      lv_obj_t *label = lv_obj_get_child(g_ui.nav_items[i], 0);
+      lv_obj_set_style_text_color(label, color(COLOR_TEXT_MUTED),
+                                  LV_PART_MAIN);
+    }
+  }
+
+  g_ui.current_page = page_index;
+}
+
+static void nav_button_event_cb(lv_event_t *event)
+{
+  lv_obj_t *btn = lv_event_get_target(event);
+  lv_event_code_t code = lv_event_get_code(event);
+
+  if (code == LV_EVENT_CLICKED) {
+    /* Find which button was clicked */
+    for (int i = 0; i < 4; i++) {
+      if (g_ui.nav_items[i] == btn) {
+        switch_page(i);
+        break;
+      }
+    }
+  }
+}
+
+/****************************************************************************
+ * UI Builder
+ ****************************************************************************/
+
+static void build_ui(void)
+{
+  lv_obj_t *screen = lv_screen_active();
+  lv_obj_t *nav_bar, *nav_btn, *label;
+
+  /* Set screen background */
+  lv_obj_set_style_bg_color(screen, color(COLOR_BG_LIGHT), LV_PART_MAIN);
+  lv_obj_set_style_bg_opa(screen, LV_OPA_COVER, LV_PART_MAIN);
+
+  /* Create all pages (hidden initially) */
+  for (int i = 0; i < PAGE_COUNT; i++) {
+    g_ui.pages[i] = lv_obj_create(screen);
+    lv_obj_set_size(g_ui.pages[i], 480, 260);  /* Leave 60px for nav */
+    lv_obj_set_pos(g_ui.pages[i], 0, 0);
+    lv_obj_set_style_bg_opa(g_ui.pages[i], LV_OPA_TRANSP, LV_PART_MAIN);
+    lv_obj_set_style_border_width(g_ui.pages[i], 0, LV_PART_MAIN);
+    lv_obj_set_style_pad_all(g_ui.pages[i], 0, LV_PART_MAIN);
+    lv_obj_add_flag(g_ui.pages[i], LV_OBJ_FLAG_HIDDEN);
+  }
+
+  /* Build page content */
+  build_home_page(g_ui.pages[PAGE_HOME]);
+  build_status_page(g_ui.pages[PAGE_STATUS]);
+  build_tasks_page(g_ui.pages[PAGE_TASKS]);
+  build_ai_page(g_ui.pages[PAGE_AI]);
+  build_settings_page(g_ui.pages[PAGE_SETTINGS]);
+
+  /* Create bottom navigation bar */
+  nav_bar = lv_obj_create(screen);
+  lv_obj_set_size(nav_bar, 480, 60);
+  lv_obj_align(nav_bar, LV_ALIGN_BOTTOM_MID, 0, 0);
+  lv_obj_set_style_bg_color(nav_bar, color(COLOR_SURFACE), LV_PART_MAIN);
+  lv_obj_set_style_border_width(nav_bar, 0, LV_PART_MAIN);
+  lv_obj_set_style_radius(nav_bar, 0, LV_PART_MAIN);
+  lv_obj_set_style_pad_all(nav_bar, 8, LV_PART_MAIN);
+  lv_obj_set_flex_flow(nav_bar, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(nav_bar, LV_FLEX_ALIGN_SPACE_EVENLY,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  /* Navigation buttons */
+  const char *nav_labels[] = {"Home", "Status", "Tasks", "AI"};
+
+  for (int i = 0; i < 4; i++) {
+    nav_btn = lv_button_create(nav_bar);
+    lv_obj_set_size(nav_btn, 110, 44);
+    lv_obj_set_style_radius(nav_btn, 4, LV_PART_MAIN);
+    lv_obj_set_style_border_width(nav_btn, 0, LV_PART_MAIN);
+
+    label = lv_label_create(nav_btn);
+    lv_label_set_text(label, nav_labels[i]);
+    lv_obj_center(label);
+
+    lv_obj_add_event_cb(nav_btn, nav_button_event_cb, LV_EVENT_CLICKED, NULL);
+    g_ui.nav_items[i] = nav_btn;
+  }
+
+  /* Show home page by default */
+  g_ui.current_page = -1;  /* Force update */
+  switch_page(PAGE_HOME);
+
+  printf("study_terminal: UI built with 5 pages\n");
+}
+
+/****************************************************************************
+ * Main Entry
+ ****************************************************************************/
+
+int main(int argc, char *argv[])
+{
+  lv_nuttx_dsc_t info;
+  lv_nuttx_result_t result;
+
+  (void)argc;
+  (void)argv;
+
+  /* Check if LVGL already initialized */
+  if (lv_is_initialized()) {
+    fprintf(stderr, "study_terminal: LVGL already initialized\n");
+    return 1;
+  }
+
+#ifdef CONFIG_BOARDCTL
+# ifndef CONFIG_NSH_ARCHINIT
+  boardctl(BOARDIOC_INIT, 0);
+# endif
+#endif
+
+  /* Initialize LVGL - same as verified v2 */
+  lv_init();
+  lv_nuttx_dsc_init(&info);
+  lv_nuttx_init(&info, &result);
+
+  if (result.disp == NULL) {
+    fprintf(stderr, "study_terminal: display init failed\n");
+    lv_deinit();
+    return 1;
+  }
+
+  printf("study_terminal: display initialized\n");
+
+  /* Build the UI */
+  build_ui();
+
+  printf("study_terminal: entering main loop\n");
+
+  /* Main loop - same as verified v2 */
+  while (true) {
+    uint32_t idle = lv_timer_handler();
+    usleep((idle == 0 ? 1 : idle) * 1000);
+  }
+
+  /* Cleanup (unreachable in normal operation) */
+  lv_nuttx_deinit(&result);
+  lv_deinit();
+  return 0;
+}
