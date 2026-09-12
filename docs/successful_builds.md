@@ -3,7 +3,84 @@
 > 更新：2026-09-12。  
 > 本表只记录已完成构建/打包的事实；“已构建”不等于“已烧录”或“真机通过”。每条当前产物必须有对应 ELF 备份。
 
-## 最新候选：连续语音对话与提醒联动（2026-09-11）
+## 最新候选：唤醒词合规统一（2026-09-12）
+
+把 7 处「你好小米」改为官方要求的「你好，openvela / Hello，openvela」（5 处在公共仓
+`packages/ai_agent`、2 处在专属仓），并加 ASCII 大小写与标点折叠、删除品牌唤醒词、
+保留中性旧别名。83 组主机检查通过；**重编 4 个翻译单元**，make 退出 0。官方 Dragon
+SUCCESS、pack finish 与新镜像时间戳成立；按板级 objcopy 参数从 ELF 导出的 11,855,284
+字节完整内核与打包输入逐字节一致。内核内 `你好，openvela` 命中 **6** 处、
+`你好小米` 命中 **0**。
+
+| 项目 | 值 |
+|---|---|
+| 镜像 | `firmware/rtos_nuttx_r528s3-dshanpi_wake-word_20260912_256Mnand.img` |
+| 镜像大小 / SHA-256 | 40,841,216 bytes / `e7ce47c3983bbe652dba431c52e1a419eafd9f5ec46c1c540618d093f42a52ea` |
+| 配对 ELF | `archive/nuttx-20260912-wake-word-candidate.elf` |
+| ELF 大小 / SHA-256 | 68,678,904 bytes / `4e08ff20e6f4efb690547b7c0f025314011a13164e645e1d911d172de0478881` |
+| 内核 bin 大小 / SHA-256 | 11,855,284 bytes / `a0762889cf987aa3e22227bf5e75dacfbb83c2cb1e13246b0ad0a14ed73d6b0a` |
+| 镜像生成时间（UTC） | 2026-09-12T16:00:57.213143+00:00 |
+| VM 配对快照 | `/home/openvela/img_backups/study-offline-candidate_20260912_160113` |
+| 状态 | **已构建打包、已配对备份；未烧录、真机待验。** |
+
+YAFFS 载荷核验通过：启动脚本、三份开机音频、字体、壁纸、图标逐文件哈希与上轮一致，
+`packed_private_config_matches_seed: true`、`non_model_settings_unchanged: true`，
+模型仍是 `mimo-v2.5`，`active.config` 哈希与上轮一致（无配置漂移）。userdata 镜像
+18,165,760 bytes / `de1d8b2c…`，字节数与上轮相同、资产哈希全部一致，但镜像哈希与上轮
+不同——userdata 由打包器重新生成，这里只记录事实，不宣称二者逐字节相同。
+Windows/VM 双端 SHA 一致。外层 pack 仍返回已知的 1，不以该返回码替代产物核验。
+详见 [完整记录](wake-word-20260912.md)。镜像含凭据，不可外发。
+
+## 历史候选：学习工具页视觉统一 + 学习报告（2026-09-12）
+
+把学习工具页拉回主页同一套视觉语言（烘焙壁纸 + 深色顶栏/tabbar + 白色半透明卡片），
+新增第三个标签「学习报告」和「清除全部提醒」。83 组主机检查通过；**只重编 1 个翻译
+单元**（`study_terminal_main.c`），make 退出 0。官方 Dragon SUCCESS、pack finish 与新
+镜像时间戳成立；按板级 objcopy 参数从 ELF 导出的 11,855,284 字节完整内核与打包输入
+逐字节一致。公共仓库 `nuttx/`、`packages/ai_agent/` 本轮零改动。
+
+| 项目 | 值 |
+|---|---|
+| 镜像 | `firmware/rtos_nuttx_r528s3-dshanpi_study-ui-consistency_20260912_256Mnand.img` |
+| 镜像大小 / SHA-256 | 40,841,216 bytes / `e2b97d1aedf564e85b044111276f0515ef52ba3997b9846686f2a167ccf2a85a` |
+| 配对 ELF | `archive/nuttx-20260912-ui-consistency-candidate.elf` |
+| ELF 大小 / SHA-256 | 68,678,880 bytes / `b20bba64006cd7d2ae3fbcb31f619c8f3583c55d16a40dcf1c12fd02d2422ae8` |
+| 内核 bin 大小 / SHA-256 | 11,855,284 bytes / `539617c6a43d15f27388381f5877e4772b744f15d8c033fb46b8b90255a5029a` |
+| 镜像生成时间（UTC） | 2026-09-12T15:35:03.046454+00:00 |
+| VM 配对快照 | `/home/openvela/img_backups/study-offline-candidate_20260912_153518` |
+| 状态 | **已构建打包、已配对备份；未烧录、真机待验。** |
+
+YAFFS 按对象路径还原启动脚本、三份开机音频、字体、壁纸和图标后逐文件比对；
+完整 userdata（18,165,760 bytes / `6c384305…`）与内核均在最终镜像中，Windows/VM
+SHA 一致。私有配置本轮**逐字节不变**（`5e17fa90…`），聊天模型仍是 `mimo-v2.5`。
+外层 pack 仍返回已知的 1，不以该返回码替代产物核验。详见
+[完整记录](ui-consistency-20260912.md)。镜像含凭据，不可外发。
+
+## 历史候选：离线学习工具（2026-09-12）
+
+提醒中心、离线提示音、专注记录三块不依赖 MiMo 云端的功能。81 组主机检查通过；
+6 个改动翻译单元全部重编，make 退出 0。官方 Dragon SUCCESS、pack finish 与新镜像
+时间戳成立；按板级 objcopy 参数从 ELF 导出的 11,855,284 字节完整内核与打包输入
+逐字节一致。
+
+| 项目 | 值 |
+|---|---|
+| 镜像 | `firmware/rtos_nuttx_r528s3-dshanpi_study-offline_20260912_256Mnand.img` |
+| 镜像大小 / SHA-256 | 40,841,216 bytes / `74f98365e632b6d240a848738bab33234439b71f793cee0689760a3f9f3e1c33` |
+| 配对 ELF | `archive/nuttx-20260912-study-offline-candidate.elf` |
+| ELF 大小 / SHA-256 | 68,670,248 bytes / `4928276d4d7d80c999858927113544b0d36cb366143f04d5cb7ae5c472c6c5e0` |
+| 内核 bin 大小 / SHA-256 | 11,855,284 bytes / `5510c0e2e9cf42501f1699fdb2125ab46c2a938198e3c0e2361c0b9aa821f645` |
+| 镜像生成时间（UTC） | 2026-09-12T15:10:10.193099+00:00 |
+| VM 配对快照 | `/home/openvela/img_backups/study-offline-candidate_20260912_151027` |
+| 状态 | **已构建打包、已配对备份；未烧录、真机待验。** |
+
+YAFFS 按对象路径还原启动脚本、三份开机音频、字体、壁纸和图标后逐文件比对；
+完整 userdata（18,165,760 bytes / `6c384305…`）与内核均在最终镜像中，Windows/VM
+SHA 一致。私有配置本轮**逐字节不变**（`5e17fa90…`），聊天模型仍是 `mimo-v2.5`。
+外层 pack 仍返回已知的 1，不以该返回码替代产物核验。详见
+[完整记录](study-offline-20260912.md)。镜像含凭据，不可外发。
+
+## 历史候选：连续语音对话与提醒联动（2026-09-11）
 
 38 组主机检查通过；15 个改动 C 文件全部重编，make 退出 0。官方 Dragon SUCCESS、pack finish 与新镜像时间戳成立；按板级 objcopy 参数从 ELF 导出的 11,838,852 字节完整内核与打包输入一致。
 
