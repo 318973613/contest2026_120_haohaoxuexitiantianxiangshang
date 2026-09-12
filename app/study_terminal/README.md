@@ -168,8 +168,8 @@ LV_FONT_SIMSUN_16_CJK=y
 ```json
 {
   "version": 1,
-  "ssid": "MyNetwork",
-  "password": "********",
+  "ssid": "<your-ssid>",
+  "password": "<your-password>",
   "auto_connect": true
 }
 ```
