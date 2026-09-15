@@ -45,7 +45,7 @@ git diff --stat feat/high-fidelity-study-ui openvela/dev-ai-contest-2026
 
 ## 三、本次提交包含的内容
 
-1. **作品代码**：原生 LVGL C 学习终端（`app/hello_app/`）、5 个自定义 Skill、
+1. **作品代码**：原生 LVGL C 学习终端（`app/hello_app/`）、4 个自定义 Skill、
    板级适配骨架、`demo/` 脚本等，共 151 个文件。
 2. **作品说明 README**：按大赛要求替换掉组委会模板，含作品简介 / 选题方向 /
    目录结构 / 运行方式 / 当前验收状态 / 合规与边界。

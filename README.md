@@ -23,7 +23,7 @@
   - 专注目标——设定目标时长并跟踪完成度；
   - 七日学习记录与学习报告——按天汇总专注时长与任务完成情况。
 - **语音交互**：唤醒词「你好，openvela」；唤醒后可直接下达指令（如「介绍 hello world」）；采用云端 ASR 回退识别。
-- **5 个自定义 Skill**：学习助手、每日复习、引导式学习、设备自检、学习计划。
+- **4 个自定义 Skill**：学习助手、每日复习、引导式学习、设备自检。
 - **双分辨率自适应**：480×320（真机）与 1280×800（模拟器）共用同一套代码，靠紧凑布局开关自动切换。
 
 技术路线是**原生 LVGL C 应用**（`app/hello_app/`）配合 openvela 自带的 `ai_agent` 组件，**不使用快应用**。
@@ -46,13 +46,13 @@ contest2026_120_haohaoxuexitiantianxiangshang/
 │   ├── study_terminal_main.c   # 主界面与全部离线学习功能（约 6900 行）
 │   ├── voice_ui_bridge.c/.h    # 语音 UI 桥接、唤醒词匹配与指令提取
 │   ├── ai_chat_bridge.c/.h     # AI 问答桥接
-│   ├── ui_status_bridge.c/.h   # 系统状态读取（WiFi / 存储 / 内存）
+│   ├── ui_status_bridge.c/.h   # 状态读取（历史保留，未参与构建）
 │   ├── study_focus_stats.c/.h  # 专注统计与七日记录
 │   ├── task_presets.c/.h       # 学习任务预设
 │   ├── wifi_setup.c/.h         # 配网
-│   ├── volume_keys.c/.h        # 音量键处理
+│   ├── volume_keys.c/.h        # 音量键处理（历史保留，未参与构建）
 │   └── lv_font_study_16.c      # 中文字体子集（CJK）
-├── src/skills/                 # 5 个自定义 Skill（大赛要求 ≥ 1 个）
+├── src/skills/                 # 4 个自定义 Skill（大赛要求 ≥ 1 个）
 ├── src/config/                 # 运行时配置模板
 ├── assets/                     # 字体与界面参考图
 ├── docs/                       # 工程记录与验收状态（详见 docs/CURRENT_HARDWARE_STATUS.md）
@@ -105,7 +105,7 @@ cd ..
 
 | 项目 | 状态 |
 |---|---|
-| 主机回归测试 | 83/83 测试组通过，0 失败，ASan/UBSan 无告警 |
+| 主机回归测试 | 83/83 测试组通过，0 失败，ASan/UBSan 无告警（夹具与脚本见 `tests/`） |
 | 官方 make 全量构建 | 通过，0 error |
 | Dragon 打包 | `execute image.cfg SUCCESS` + `pack finish` |
 | 镜像与 ELF 配对 | ELF → bin 字节一致，11,855,284 bytes |
@@ -114,9 +114,15 @@ cd ..
 
 **尚未完成的部分（如实说明）：**
 
-- **镜像未烧录到真机验证。** 真实板端的语音唤醒识别率、连续播报延迟、触摸映射仍待验收。
+- **唤醒词短语匹配已真机通过（2026-09-13）**：用户在真机执行 `voice_wake_test`，
+  六条用例全部符合预期（3 条正向命中；`你好小米` / `小米同学` / `你好` 全部
+  `Wake match: no`）。该命令不依赖麦克风、网络或任何 Key。
+- **端到端语音链路仍未取得实测数据。** 唤醒 → ASR → 大模型 → TTS 播报的
+  真机往返时延、识别准确率与播报延迟，尚未在真机上逐项测量，因此不宣称已通过。
 - 唤醒依赖**联网批量 ASR**，因此不宣称离线语音能力。
-- 模型凭据需在本地配置有效值后方可验收联网问答。
+- 触摸映射、连续对话后的触摸响应、开机语音清晰度仍待逐项复验。
+- 逐项、可追溯的验收口径以 `docs/CURRENT_HARDWARE_STATUS.md` 为唯一权威；
+  主机检查的夹具与运行脚本见 `tests/`（运行前提见 `tests/README.md`）。
 
 准确、逐项的功能验收状态以 `docs/CURRENT_HARDWARE_STATUS.md` 为唯一权威。
 
