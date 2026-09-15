@@ -20,6 +20,9 @@ out/
 .depend
 Make.dep
 
+# Host test output (fixtures live in tests/, output does not)
+tests/out/
+
 # Local edit snapshots and pre-merge copies
 *.orig
 *.rej

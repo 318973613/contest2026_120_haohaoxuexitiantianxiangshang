@@ -1,0 +1,35 @@
+cmake_minimum_required(VERSION 3.16)
+project(study_ui_host_checks C CXX)
+if(DEFINED ENV{OPENVELA_ROOT})
+  set(TREE $ENV{OPENVELA_ROOT})
+else()
+  set(TREE /home/openvela/openvela)
+endif()
+get_filename_component(WORK ../.. ABSOLUTE BASE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
+set(APP ${WORK}/app/hello_app)
+set(CJSON ${TREE}/apps/netutils/cjson/cJSON)
+
+add_compile_options(-g -O1 -fsanitize=address,undefined -fno-omit-frame-pointer
+                    -ffunction-sections -fdata-sections)
+add_link_options(-fsanitize=address,undefined -no-pie -Wl,--gc-sections)
+set(FT_DISABLE_ZLIB TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_BZIP2 TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_PNG TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_HARFBUZZ TRUE CACHE BOOL "" FORCE)
+set(FT_DISABLE_BROTLI TRUE CACHE BOOL "" FORCE)
+add_subdirectory(${TREE}/external/freetype/freetype freetype EXCLUDE_FROM_ALL)
+set(LV_CONF_PATH ${CMAKE_CURRENT_SOURCE_DIR}/lv_conf.h CACHE STRING "" FORCE)
+set(LV_CONF_BUILD_DISABLE_EXAMPLES ON CACHE BOOL "" FORCE)
+set(LV_CONF_BUILD_DISABLE_DEMOS ON CACHE BOOL "" FORCE)
+set(LV_CONF_BUILD_DISABLE_THORVG_INTERNAL ON CACHE BOOL "" FORCE)
+add_subdirectory(${TREE}/apps/graphics/lvgl/lvgl lvgl EXCLUDE_FROM_ALL)
+target_link_libraries(lvgl PUBLIC freetype m)
+
+add_executable(ui ../ui_integration.c ${APP}/lv_font_study_16.c
+                  ${APP}/task_presets.c ${APP}/study_focus_stats.c ${CJSON}/cJSON.c)
+target_compile_definitions(ui PRIVATE _GNU_SOURCE)
+target_compile_options(ui PRIVATE -Wall -Wextra -Werror=implicit-function-declaration)
+target_include_directories(ui PRIVATE ../include
+    ${TREE}/packages/ai_agent/include ${APP} ${CJSON}
+    ${TREE}/apps/graphics/lvgl)
+target_link_libraries(ui PRIVATE lvgl pthread)
